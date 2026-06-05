@@ -179,6 +179,7 @@ export function buildPrintHTML(
 
   const customerName = esc(customer?.company_name || '')
   const customerAddress = nl2br(customer?.address || '')
+  const customerPin = esc(joinNonEmpty([customer?.pin, customer?.state, customer?.country], ', '))
   const customerContacts = (customer?.contacts ?? [])
     .map(c => {
       const name = String(c?.name ?? '').trim()
@@ -198,41 +199,43 @@ export function buildPrintHTML(
 <head>
   <meta charset="utf-8" />
   <style>
-    @page { size: ${page.w}mm ${page.h}mm; margin: 8mm; }
-    html {
+    @page { size: ${page.w}mm ${page.h}mm; margin: 0; }
+    html, body {
       margin: 0;
       padding: 0;
-      height: 100%;
-    }
-    body {
-      margin: 0;
-      padding: 0;
-      height: 100vh;
-      display: flex;
-      flex-direction: column;
+      width: ${page.w}mm;
+      height: ${page.h}mm;
+      overflow: hidden;
       font-family: Arial, Helvetica, sans-serif;
       color: #000;
-      box-sizing: border-box;
       -webkit-print-color-adjust: exact;
       print-color-adjust: exact;
     }
     .sheet {
-      width: 100%;
-      flex: 1;
+      width: calc(${page.w}mm - 16mm);
+      height: calc(${page.h}mm - 16mm);
+      margin: 8mm;
+      box-sizing: border-box;
       display: flex;
       flex-direction: column;
       overflow: hidden;
     }
+    @media print {
+      html, body {
+        width: ${page.w}mm !important;
+        height: ${page.h}mm !important;
+      }
+    }
     .top { text-align: center; padding-bottom: 3mm; margin-bottom: 3mm; border-bottom: 1px solid #000; flex: 0 0 auto; }
     .transporter-name { font-size: ${page.transporterPt}pt; font-weight: 800; line-height: 1.08; margin: 0; }
     .transporter-line { margin-top: 1.5mm; font-size: ${Math.max(6, page.transporterPt - 4)}pt; font-weight: 400; }
-    .middle { flex: 1 1 auto; display: flex; align-items: center; justify-content: center; min-height: 0; }
-    .middle-inner { width: 100%; display: flex; flex-direction: column; align-items: flex-start; justify-content: flex-start; text-align: left; gap: 2.2mm; padding-left: 8mm; }
+    .middle { flex: 1; display: flex; align-items: stretch; min-height: 0; }
+    .middle-inner { flex: 1; display: flex; flex-direction: column; justify-content: center; align-items: flex-start; text-align: left; gap: 2mm; padding-left: 8mm; }
     .care-row { display: flex; flex-wrap: wrap; justify-content: flex-start; gap: 1.6mm; margin: 0; }
     .care-chip { display: inline-flex; align-items: center; gap: 1mm; border: 1px solid #000; border-radius: 999px; padding: 0.8mm 2mm; font-size: 8pt; font-weight: 700; }
     .to-label { font-size: ${Math.max(8, page.toAddressPt + 1)}pt; font-weight: 800; text-decoration: underline; margin: 0; text-align: left; }
     .to-company { font-size: ${page.toCompanyPt}pt; font-weight: 800; line-height: 1.05; margin: 0; word-break: break-word; }
-    .to-address, .to-contact { font-size: ${page.toAddressPt}pt; line-height: 1.18; margin: 0; word-break: break-word; }
+    .to-address, .to-pin, .to-contact { font-size: ${page.toAddressPt}pt; line-height: 1.18; margin: 0; word-break: break-word; }
     .to-contact { font-weight: 600; }
     .bottom { flex: 0 0 auto; border-top: 1px solid #000; padding-top: 3mm; margin-top: 3mm; }
     .from-label { font-size: ${Math.max(8, page.bottomNamePt)}pt; font-weight: 800; text-decoration: underline; margin: 0 0 1.8mm 0; }
@@ -256,6 +259,7 @@ export function buildPrintHTML(
         <div class="to-label">To:</div>
         <div class="to-company">${customerName}</div>
         <div class="to-address">${customerAddress}</div>
+        ${customerPin ? `<div class="to-pin">${customerPin}</div>` : ''}
         ${customerContacts.map(c => `<div class="to-contact">${c}</div>`).join('')}
       </div>
     </div>

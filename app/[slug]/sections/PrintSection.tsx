@@ -279,15 +279,15 @@ export default function PrintSection({ tenant, customers, transporters, defaultC
     <>
       <style>{`
         @media print {
-          .no-print { display: none !important; }
-          .print-only { display: block !important; }
+          body > * { display: none !important; }
+          .print-only { display: block !important; position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 99999; background: white; }
           @page { size: ${pw}mm ${ph}mm; margin: 8mm; }
         }
         .print-only { display: none; }
       `}</style>
 
       {/* Print-only label — hidden on screen, shown when printing */}
-      <div className="print-only" style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%' }}>
+      <div className="print-only">
         <LabelLayout {...layoutProps} isPrint={true} />
       </div>
 

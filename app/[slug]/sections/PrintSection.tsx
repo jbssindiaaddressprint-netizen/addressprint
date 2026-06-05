@@ -154,9 +154,9 @@ export function buildPrintHTML(
   <meta charset="utf-8">
   <style>
     @page { size: ${page.w}mm ${page.h}mm; margin: 8mm; }
-    html, body { margin: 0; padding: 0; width: ${page.w}mm; height: ${page.h}mm; overflow: hidden; }
+    html, body { margin: 0; padding: 0; width: ${page.w}mm; height: 100vh; overflow: hidden; }
     body { display: flex; flex-direction: column; font-family: Arial, Helvetica, sans-serif; color: #000; box-sizing: border-box; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-    .sheet { width: calc(${page.w}mm - 16mm); height: calc(${page.h}mm - 16mm); display: flex; flex-direction: column; overflow: hidden; box-sizing: border-box; }
+    .sheet { width: calc(${page.w}mm - 16mm); height: calc(${page.h}mm - 16mm); margin: 8mm; display: flex; flex-direction: column; overflow: hidden; box-sizing: border-box; }
     .top{ text-align:center; padding-bottom:2mm; margin-bottom:2mm; border-bottom:1px solid #000; font-size:${page.transporterPt}pt; font-weight:800; }
     .transporter-line{ margin-top:1mm; font-size:${Math.max(6, page.transporterPt - 4)}pt; font-weight:400; color:#444; }
     .middle { flex: 1; display: flex; align-items: stretch; min-height: 0; }
@@ -276,7 +276,7 @@ export default function PrintSection({ tenant, customers, transporters, defaultC
       SIZE_KEY_MAP[size],
       customer,
       transporter as Transporter,
-      { branch, freight, lr },
+      { branch, freight, lr, mode },
       showFrom,
       tenant,
       careSym.map(s => CARE_KEY_MAP[s])

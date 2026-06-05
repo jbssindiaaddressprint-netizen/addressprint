@@ -113,20 +113,6 @@ function CareRow({ syms, sp }: { syms: CareSymbol[]; sp: SP }) {
 
 // ─── Print HTML builder ──────────────────────────────────────────────────────
 
-function careBoxHtml(s: CareSymbol, sp: SP): string {
-  return (
-    `<div style="border:.75pt solid #111;padding:2pt;text-align:center;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2pt;">` +
-    `<svg viewBox="0 0 24 24" width="${sp.iconMm}mm" height="${sp.iconMm}mm" fill="none" stroke="#111" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">${CARE_SVG_HTML[s]}</svg>` +
-    `<div style="font-size:${sp.clPt}pt;font-weight:700;text-transform:uppercase;letter-spacing:.04em;line-height:1.2;">${s}</div>` +
-    `</div>`
-  )
-}
-
-function careRowHtml(syms: CareSymbol[], sp: SP): string {
-  if (!syms.length) return ''
-  return `<div style="display:flex;flex-direction:row;justify-content:center;gap:3mm;flex-shrink:0;padding-bottom:2mm;">${syms.map(s => careBoxHtml(s, sp)).join('')}</div>`
-}
-
 export function buildPrintHTML(
   size: PrintSize,
   customer: Customer,
@@ -145,130 +131,64 @@ export function buildPrintHTML(
     C5: { w: 229, h: 162, transporterPt: 11, toCompanyPt: 16, toAddressPt: 9,  bottomNamePt: 9,  bottomRestPt: 7,  logoMaxH: '12mm' },
     C4: { w: 324, h: 229, transporterPt: 9,  toCompanyPt: 12, toAddressPt: 7,  bottomNamePt: 9,  bottomRestPt: 7,  logoMaxH: '12mm' },
   }
-
   const page = sizes[size] ?? sizes.A4
-
-  const esc = (value: unknown) =>
-    String(value ?? '')
-      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-      .replace(/"/g, '&quot;').replace(/'/g, '&#39;')
-
-  const nl2br = (value: unknown) => esc(value).replace(/\n/g, '<br>')
-
-  const joinNonEmpty = (items: Array<string | undefined | null>, separator = ' · ') =>
-    items.map(v => String(v ?? '').trim()).filter(Boolean).join(separator)
-
-  const careMap: Record<CareKey, { label: string; symbol: string }> = {
-    fragile: { label: 'FRAGILE',      symbol: '⚠' },
-    glass:   { label: 'GLASS',        symbol: '◻' },
-    dry:     { label: 'KEEP DRY',     symbol: '☔' },
-    up:      { label: 'THIS SIDE UP', symbol: '↑' },
-    nobend:  { label: 'NO BEND',      symbol: '⟂' },
-  }
-
-  const selectedCare = (care ?? [])
-    .map(c => String(c).trim().toLowerCase() as CareKey)
-    .filter((c): c is CareKey => c in careMap)
-
-  const careHtml = selectedCare.length
-    ? `<div class="care-row">${selectedCare.map(c => `<div class="care-chip"><span class="care-symbol">${esc(careMap[c].symbol)}</span><span class="care-label">${esc(careMap[c].label)}</span></div>`).join('')}</div>`
-    : ''
-
+  const esc = (v: unknown) => String(v ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;')
+  const nl2br = (v: unknown) => esc(v).replace(/\n/g, '<br>')
+  const selectedCare = (care ?? []).map(c => String(c).trim().toLowerCase()).filter(c => ['fragile', 'glass', 'dry', 'up', 'nobend'].includes(c))
+  const careLabels: Record<string, string> = { fragile: 'FRAGILE', glass: 'GLASS', dry: 'KEEP DRY', up: 'THIS SIDE UP', nobend: 'NO BEND' }
+  const careSymbols: Record<string, string> = { fragile: '⚠', glass: '◻', dry: '☔', up: '↑', nobend: '⟂' }
+  const careHtml = selectedCare.length ? `<div class="care-row">${selectedCare.map(c => `<div class="care-chip"><span class="care-symbol">${esc(careSymbols[c])}</span><span class="care-label">${esc(careLabels[c])}</span></div>`).join('')}</div>` : ''
   const transporterName = esc(transporter?.name || '')
-  const transporterLine = joinNonEmpty([transporterOptions.branch, transporterOptions.freight, transporterOptions.lr])
-
+  const transporterLine = [transporterOptions.branch, transporterOptions.freight, transporterOptions.lr].filter(Boolean).join(' · ')
   const customerName = esc(customer?.company_name || '')
   const customerAddress = nl2br(customer?.address || '')
-  const customerPin = esc(joinNonEmpty([customer?.pin, customer?.state, customer?.country], ', '))
-  const customerContacts = (customer?.contacts ?? [])
-    .map(c => {
-      const name = String(c?.name ?? '').trim()
-      const phone = String(c?.phone ?? '').trim()
-      if (!name && !phone) return ''
-      return `${esc(name)}${name && phone ? ' : ' : ''}${esc(phone)}`
-    })
-    .filter(Boolean)
-
-  const bottomPhones = joinNonEmpty([tenant?.phone, ...(tenant?.extra_phones ?? [])], ' / ')
-  const bottomAddress = joinNonEmpty([tenant?.address, tenant?.pin ? tenant.pin : '', tenant?.state], ', ')
+  const contacts = (customer?.contacts ?? []).map(c => `${esc(c?.name)}${c?.phone ? ` : ${esc(c.phone)}` : ''}`).filter(Boolean)
+  const bottomPhones = [tenant?.phone, ...(tenant?.extra_phones ?? [])].filter(Boolean).join(' / ')
+  const bottomAddress = [tenant?.address, tenant?.pin, tenant?.state].filter(Boolean).join(', ')
   const bottomLogo = tenant?.logo_url ? `<img class="logo" src="${esc(tenant.logo_url)}" alt="Logo" />` : ''
-  const showFrom = fromOn !== false && !!(tenant?.name || tenant?.address || tenant?.phone || (tenant?.extra_phones?.length ?? 0))
+  const showFrom = fromOn && !!(tenant?.name || tenant?.address || tenant?.phone || bottomLogo)
 
   return `<!doctype html>
 <html>
 <head>
-  <meta charset="utf-8" />
+  <meta charset="utf-8">
   <style>
-    @page { size: ${page.w}mm ${page.h}mm; margin: 0; }
-    html, body {
-      margin: 0;
-      padding: 0;
-      width: ${page.w}mm;
-      height: ${page.h}mm;
-      overflow: hidden;
-      font-family: Arial, Helvetica, sans-serif;
-      color: #000;
-      -webkit-print-color-adjust: exact;
-      print-color-adjust: exact;
-    }
-    .sheet {
-      width: calc(${page.w}mm - 16mm);
-      height: calc(${page.h}mm - 16mm);
-      margin: 8mm;
-      box-sizing: border-box;
-      display: flex;
-      flex-direction: column;
-      overflow: hidden;
-    }
-    @media print {
-      html, body {
-        width: ${page.w}mm !important;
-        height: ${page.h}mm !important;
-      }
-    }
-    .top { text-align: center; padding-bottom: 3mm; margin-bottom: 3mm; border-bottom: 1px solid #000; flex: 0 0 auto; }
-    .transporter-name { font-size: ${page.transporterPt}pt; font-weight: 800; line-height: 1.08; margin: 0; }
-    .transporter-line { margin-top: 1.5mm; font-size: ${Math.max(6, page.transporterPt - 4)}pt; font-weight: 400; }
-    .middle { flex: 1; display: flex; align-items: stretch; min-height: 0; }
-    .middle-inner { flex: 1; display: flex; flex-direction: column; justify-content: center; align-items: flex-start; text-align: left; gap: 2mm; padding-left: 8mm; }
-    .care-row { display: flex; flex-wrap: wrap; justify-content: flex-start; gap: 1.6mm; margin: 0; }
-    .care-chip { display: inline-flex; align-items: center; gap: 1mm; border: 1px solid #000; border-radius: 999px; padding: 0.8mm 2mm; font-size: 8pt; font-weight: 700; }
-    .to-label { font-size: ${Math.max(8, page.toAddressPt + 1)}pt; font-weight: 800; text-decoration: underline; margin: 0; text-align: left; }
-    .to-company { font-size: ${page.toCompanyPt}pt; font-weight: 800; line-height: 1.05; margin: 0; word-break: break-word; }
-    .to-address, .to-pin, .to-contact { font-size: ${page.toAddressPt}pt; line-height: 1.18; margin: 0; word-break: break-word; }
-    .to-contact { font-weight: 600; }
-    .bottom { flex: 0 0 auto; border-top: 1px solid #000; padding-top: 3mm; margin-top: 3mm; }
-    .from-label { font-size: ${Math.max(8, page.bottomNamePt)}pt; font-weight: 800; text-decoration: underline; margin: 0 0 1.8mm 0; }
-    .from-row { display: flex; align-items: flex-start; gap: 2.5mm; width: 100%; }
-    .logo { max-height: ${page.logoMaxH}; max-width: 28mm; width: auto; height: auto; object-fit: contain; flex: 0 0 auto; }
-    .from-text { min-width: 0; flex: 1 1 auto; font-size: ${page.bottomRestPt}pt; line-height: 1.2; }
-    .from-name { font-size: ${page.bottomNamePt}pt; font-weight: 800; line-height: 1.15; margin: 0; }
-    .from-address, .from-phone { font-size: ${page.bottomRestPt}pt; font-weight: 400; line-height: 1.2; margin: 0; }
-    .from-phone { margin-top: 0.4mm; }
+    @page { size: ${page.w}mm ${page.h}mm; margin: 8mm; }
+    html,body{ margin:0; padding:0; height:100%; font-family:Arial,Helvetica,sans-serif; color:#000; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+    .sheet{ flex:1; display:flex; flex-direction:column; width:100%; height:100%; }
+    .top{ text-align:center; padding-bottom:2mm; margin-bottom:2mm; border-bottom:1px solid #000; font-size:${page.transporterPt}pt; font-weight:800; }
+    .transporter-line{ margin-top:1mm; font-size:${Math.max(6, page.transporterPt - 4)}pt; font-weight:400; color:#444; }
+    .middle{ flex:1 1 auto; display:flex; align-items:center; justify-content:center; min-height:0; }
+    .middle-inner{ width:100%; display:flex; flex-direction:column; align-items:flex-start; gap:2mm; padding-left:8mm; }
+    .to-label{ font-size:${Math.max(8, page.toAddressPt + 1)}pt; font-weight:800; text-decoration:underline; margin-bottom:1mm; }
+    .to-company{ font-size:${page.toCompanyPt}pt; font-weight:800; line-height:1.05; }
+    .to-address,.to-contact{ font-size:${page.toAddressPt}pt; line-height:1.3; }
+    .to-contact{ font-weight:600; }
+    .bottom{ flex:0 0 auto; border-top:1px solid #000; padding-top:3mm; margin-top:3mm; }
+    .from-label{ font-size:${page.bottomNamePt}pt; font-weight:800; text-decoration:underline; margin-bottom:1.5mm; }
+    .from-row{ display:flex; align-items:flex-start; gap:2.5mm; }
+    .logo{ max-height:${page.logoMaxH}; max-width:28mm; object-fit:contain; }
+    .from-text{ flex:1; font-size:${page.bottomRestPt}pt; line-height:1.3; }
+    .from-name{ font-size:${page.bottomNamePt}pt; font-weight:800; margin-bottom:0.5mm; }
+    .care-row{ display:flex; flex-wrap:wrap; gap:1.5mm; margin-bottom:2mm; }
+    .care-chip{ display:inline-flex; align-items:center; gap:1mm; border:1px solid #000; border-radius:999px; padding:0.8mm 2mm; font-size:8pt; font-weight:700; }
   </style>
 </head>
 <body>
   <div class="sheet">
-    <div class="top">
-      <div class="transporter-name">${transporterName}</div>
-      ${transporterLine ? `<div class="transporter-line">${esc(transporterLine)}</div>` : ''}
-    </div>
+    ${transporterName ? `<div class="top"><div>${transporterName}</div>${transporterLine ? `<div class="transporter-line">${esc(transporterLine)}</div>` : ''}</div>` : ''}
     <div class="middle">
       <div class="middle-inner">
         ${careHtml}
         <div class="to-label">To:</div>
         <div class="to-company">${customerName}</div>
         <div class="to-address">${customerAddress}</div>
-        ${customerPin ? `<div class="to-pin">${customerPin}</div>` : ''}
-        ${customerContacts.map(c => `<div class="to-contact">${c}</div>`).join('')}
+        ${contacts.map(c => `<div class="to-contact">${c}</div>`).join('')}
       </div>
     </div>
-    ${showFrom ? `<div class="bottom"><div class="from-label">From:</div><div class="from-row">${bottomLogo}<div class="from-text"><div class="from-name">${esc(tenant?.name || '')}</div><div class="from-address">${esc(bottomAddress)}</div><div class="from-phone">Ph: ${esc(bottomPhones)}</div></div></div></div>` : ''}
+    ${showFrom ? `<div class="bottom"><div class="from-label">From:</div><div class="from-row">${bottomLogo}<div class="from-text"><div class="from-name">${esc(tenant?.name || '')}</div><div>${esc(bottomAddress)}</div><div>Ph: ${esc(bottomPhones)}</div></div></div></div>` : ''}
   </div>
-  <script>
-    window.addEventListener('load', () => { setTimeout(() => { window.focus(); window.print(); }, 50); });
-    window.onafterprint = () => { try { window.close(); } catch(e) {} };
-  <\/script>
+  <script>window.addEventListener('load',()=>{setTimeout(()=>{window.focus();window.print();},50);});window.onafterprint=()=>{try{window.close();}catch(e){};};<\/script>
 </body>
 </html>`
 }
@@ -371,7 +291,6 @@ export default function PrintSection({ tenant, customers, transporters, defaultC
 
   const [pw, ph] = SIZE_DIMS[size]
   const sp = SZ[size]
-  const isEnv = ENV.includes(size)
   const PREVIEW_W = 320
   const scale = PREVIEW_W / (pw * MM)
   const previewH = Math.round(ph * MM * scale)
@@ -383,64 +302,6 @@ export default function PrintSection({ tenant, customers, transporters, defaultC
   const dropWrap = 'absolute z-20 mt-1 w-full max-h-52 overflow-y-auto rounded-lg border border-slate-200 bg-white shadow-lg'
   const dropItem = (active: boolean) => `w-full px-3 py-2 text-left text-sm transition hover:bg-slate-50 ${active ? 'bg-[#f0fdf9] text-[#0F766E] font-semibold' : 'text-slate-700'}`
   const xBtn = <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" /></svg>
-
-  // ── Preview building blocks ───────────────────────────────────────────────
-
-  // Transporter bar
-  const pvTBar = transporter ? (() => {
-    const details = [branch, freight, lr, mode].filter(Boolean)
-    return (
-      <div style={{ textAlign: 'center', borderBottom: `${2 * PT}px solid #000`, paddingBottom: 2 * PT, marginBottom: 3 * MM, flexShrink: 0, fontSize: sp.tBarPt * PT, fontFamily: 'Arial, Helvetica, sans-serif' }}>
-        <span style={{ fontWeight: 700 }}>{transporter.name}</span>
-        {details.length > 0 && <span style={{ fontWeight: 400, color: '#444' }}> &nbsp;·&nbsp; {details.join(' · ')}</span>}
-      </div>
-    )
-  })() : null
-
-  // Care row
-  const pvCareRow = careSym.length > 0 ? <CareRow syms={careSym} sp={sp} /> : null
-
-  // TO block
-  const pvToBlock = customer ? (
-    <div style={{ flex: 1, display: 'flex', alignItems: 'center', overflow: 'hidden' }}>
-      <div style={isEnv ? { marginLeft: '40%' } : {}}>
-        <div style={{ fontSize: sp.toPt * PT, fontWeight: 700, textDecoration: 'underline', marginBottom: sp.toPt * PT * 0.4 }}>To:</div>
-        <div style={{ fontSize: sp.coPt * PT, fontWeight: 900, lineHeight: 1.05, marginLeft: 6 * MM, wordBreak: 'break-word' }}>{customer.company_name}</div>
-        {customer.contacts.filter((_, i) => selContacts.includes(i)).map((ct, i) => (
-          <div key={i} style={{ fontSize: sp.adPt * PT, color: '#555', marginTop: sp.adPt * PT * 0.3 }}>{ct.name}{ct.phone ? ` — ${ct.phone}` : ''}</div>
-        ))}
-        <div style={{ fontSize: sp.adPt * PT, fontWeight: 500, color: '#222', lineHeight: 1.5, marginTop: sp.adPt * PT * 0.5 }}>{customer.address}</div>
-        <div style={{ fontSize: sp.adPt * PT, color: '#555', marginTop: sp.adPt * PT * 0.3 }}>{customer.pin} — {customer.state}, {customer.country}</div>
-      </div>
-    </div>
-  ) : null
-
-  // FROM logo + text helper
-  const pvFromInner = showFrom ? (
-    <div style={{ display: 'flex', flexDirection: 'row', alignItems: 'center' }}>
-      {tenant.logo_url && (
-        <img src={tenant.logo_url} alt="" style={{ height: sp.logoMm * MM, maxWidth: sp.logoMm * 2 * MM, objectFit: 'contain', display: 'block', flexShrink: 0, marginRight: 3 * MM }} />
-      )}
-      <div>
-        <div style={{ fontSize: sp.fNmPt * PT, fontWeight: 700, lineHeight: 1.3 }}>{tenant.name}</div>
-        <div style={{ fontSize: sp.fAdPt * PT, color: '#555', lineHeight: 1.4, marginTop: sp.fAdPt * PT * 0.3 }}>{tenant.address}, {tenant.pin} — {tenant.state}</div>
-        <div style={{ fontSize: sp.fAdPt * PT, color: '#555', marginTop: sp.fAdPt * PT * 0.2 }}>{phones.join(' / ')}</div>
-      </div>
-    </div>
-  ) : null
-
-  // FROM block — portrait: border-top at bottom; envelope: absolute left column
-  const pvFromPortrait = showFrom ? (
-    <div style={{ borderTop: `${2 * PT}px solid #000`, paddingTop: 3 * MM, flexShrink: 0 }}>
-      {pvFromInner}
-    </div>
-  ) : null
-
-  const pvFromEnv = showFrom ? (
-    <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: '36%', display: 'flex', flexDirection: 'column', justifyContent: 'center', paddingRight: 3 * MM }}>
-      {pvFromInner}
-    </div>
-  ) : null
 
   return (
     <div className="flex h-full overflow-hidden">
@@ -626,22 +487,50 @@ export default function PrintSection({ tenant, customers, transporters, defaultC
             <p className="text-sm text-slate-400">Select a customer to preview the label</p>
           </div>
         ) : (
-          <div className="shadow-2xl" style={{ width: PREVIEW_W, height: previewH, overflow: 'hidden', position: 'relative' }}>
+          <div className="shadow-2xl" style={{ width: PREVIEW_W, height: previewH, overflow: 'hidden' }}>
             <div style={{
               width: pw * MM, height: ph * MM,
               transform: `scale(${scale})`, transformOrigin: 'top left',
               background: 'white', fontFamily: 'Arial, Helvetica, sans-serif',
               display: 'flex', flexDirection: 'column',
-              padding: 8 * MM * scale, boxSizing: 'border-box', overflow: 'hidden',
-              position: 'relative',
+              padding: 8 * MM, boxSizing: 'border-box', overflow: 'hidden',
             }}>
-              {pvTBar}
-              {pvCareRow}
-              {pvToBlock}
-              {isEnv ? pvFromEnv : pvFromPortrait}
-              <div style={{ fontSize: 5 * PT, textAlign: 'right', color: '#ccc', paddingTop: 2 * PT, flexShrink: 0 }}>
-                AddressPrint — BizKit by JBSS India
+              {transporter && (
+                <div style={{ textAlign: 'center', borderBottom: '1px solid #000', paddingBottom: 2 * MM, marginBottom: 2 * MM, flexShrink: 0, fontSize: sp.tBarPt * PT, fontWeight: 800 }}>
+                  {transporter.name}
+                  {[branch, freight, lr, mode].filter(Boolean).length > 0 && (
+                    <div style={{ marginTop: 1 * MM, fontSize: Math.max(6 * PT, (sp.tBarPt - 4) * PT), fontWeight: 400, color: '#444' }}>
+                      {[branch, freight, lr, mode].filter(Boolean).join(' · ')}
+                    </div>
+                  )}
+                </div>
+              )}
+              <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 0 }}>
+                <div style={{ width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 2 * MM, paddingLeft: 8 * MM }}>
+                  {careSym.length > 0 && <CareRow syms={careSym} sp={sp} />}
+                  <div style={{ fontSize: Math.max(8 * PT, (sp.adPt + 1) * PT), fontWeight: 800, textDecoration: 'underline' }}>To:</div>
+                  <div style={{ fontSize: sp.coPt * PT, fontWeight: 800, lineHeight: 1.05, wordBreak: 'break-word' }}>{customer.company_name}</div>
+                  <div style={{ fontSize: sp.adPt * PT, lineHeight: 1.3 }}>{customer.address}</div>
+                  {customer.contacts.filter((_, i) => selContacts.includes(i)).map((ct, i) => (
+                    <div key={i} style={{ fontSize: sp.adPt * PT, fontWeight: 600, lineHeight: 1.3 }}>{ct.name}{ct.phone ? ` : ${ct.phone}` : ''}</div>
+                  ))}
+                </div>
               </div>
+              {showFrom && (
+                <div style={{ borderTop: '1px solid #000', paddingTop: 3 * MM, marginTop: 3 * MM, flexShrink: 0 }}>
+                  <div style={{ fontSize: sp.fNmPt * PT, fontWeight: 800, textDecoration: 'underline', marginBottom: 1.5 * MM }}>From:</div>
+                  <div style={{ display: 'flex', alignItems: 'flex-start', gap: 2.5 * MM }}>
+                    {tenant.logo_url && (
+                      <img src={tenant.logo_url} alt="" style={{ maxHeight: sp.logoMm * MM, maxWidth: 28 * MM, objectFit: 'contain', flexShrink: 0 }} />
+                    )}
+                    <div style={{ flex: 1, fontSize: sp.fAdPt * PT, lineHeight: 1.3 }}>
+                      <div style={{ fontSize: sp.fNmPt * PT, fontWeight: 800, marginBottom: 0.5 * MM }}>{tenant.name}</div>
+                      <div>{[tenant.address, tenant.pin, tenant.state].filter(Boolean).join(', ')}</div>
+                      <div>Ph: {phones.join(' / ')}</div>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         )}

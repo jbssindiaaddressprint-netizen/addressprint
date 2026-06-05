@@ -14,13 +14,8 @@ interface Props {
 
 type ModalMode = { type: 'add' } | { type: 'edit'; transporter: Transporter }
 
-const FREIGHT_OPTIONS = ['To Pay', 'Paid']
-const LR_OPTIONS = ['CC Attached', 'Self', 'Not Attached', 'Through Bank']
-const MODE_OPTIONS = ['Air', 'Surface']
-
 const inputCls = 'w-full rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-800 placeholder-slate-400 outline-none transition focus:border-[#14B8A6] focus:ring-2 focus:ring-[#14B8A6]/20'
 const labelCls = 'block text-xs font-medium text-slate-600 mb-1'
-const selectCls = inputCls + ' bg-white'
 
 export default function TransportersSection({ tenantId, transporters, onAdded, onUpdated, onDeleted }: Props) {
   const [query, setQuery] = useState('')
@@ -31,9 +26,6 @@ export default function TransportersSection({ tenantId, transporters, onAdded, o
 
   // Form state
   const [tType, setTType] = useState<TransporterType>('courier')
-  const [mode, setMode] = useState('Air')
-  const [freight, setFreight] = useState('To Pay')
-  const [lr, setLr] = useState('Self')
 
   const filtered = useMemo(() => {
     const q = query.toLowerCase().trim()
@@ -45,18 +37,12 @@ export default function TransportersSection({ tenantId, transporters, onAdded, o
 
   function openAdd() {
     setTType('courier')
-    setMode('Air')
-    setFreight('To Pay')
-    setLr('Self')
     setFormError(null)
     setModal({ type: 'add' })
   }
 
   function openEdit(t: Transporter) {
     setTType(t.type)
-    setMode(t.mode ?? 'Air')
-    setFreight(t.freight ?? 'To Pay')
-    setLr(t.lr ?? 'Self')
     setFormError(null)
     setModal({ type: 'edit', transporter: t })
   }
@@ -66,10 +52,9 @@ export default function TransportersSection({ tenantId, transporters, onAdded, o
     if (!modal) return
     const fd = new FormData(e.currentTarget)
     const name = (fd.get('name') as string).trim()
-    const branch = (fd.get('branch') as string).trim()
 
-    if (!name || !branch) {
-      setFormError('Name and Branch are required.')
+    if (!name) {
+      setFormError('Name is required.')
       return
     }
     setFormError(null)
@@ -77,10 +62,10 @@ export default function TransportersSection({ tenantId, transporters, onAdded, o
     const input = {
       type: tType,
       name,
-      branch,
-      mode: tType === 'courier' ? mode : null,
-      freight: tType === 'transporter' ? freight : null,
-      lr: tType === 'transporter' ? lr : null,
+      branch: '',
+      mode: null,
+      freight: null,
+      lr: null,
     }
 
     startTransition(async () => {
@@ -196,37 +181,6 @@ export default function TransportersSection({ tenantId, transporters, onAdded, o
                 <label className={labelCls}>Name *</label>
                 <input name="name" required defaultValue={modal.type === 'edit' ? modal.transporter.name : ''} className={inputCls} placeholder="DTDC, Blue Dart…" />
               </div>
-
-              <div>
-                <label className={labelCls}>Branch *</label>
-                <input name="branch" required defaultValue={modal.type === 'edit' ? modal.transporter.branch : ''} className={inputCls} placeholder="Ahmedabad Hub" />
-              </div>
-
-              {tType === 'courier' && (
-                <div>
-                  <label className={labelCls}>Mode</label>
-                  <select value={mode} onChange={e => setMode(e.target.value)} className={selectCls}>
-                    {MODE_OPTIONS.map(o => <option key={o}>{o}</option>)}
-                  </select>
-                </div>
-              )}
-
-              {tType === 'transporter' && (
-                <>
-                  <div>
-                    <label className={labelCls}>Freight</label>
-                    <select value={freight} onChange={e => setFreight(e.target.value)} className={selectCls}>
-                      {FREIGHT_OPTIONS.map(o => <option key={o}>{o}</option>)}
-                    </select>
-                  </div>
-                  <div>
-                    <label className={labelCls}>LR Type</label>
-                    <select value={lr} onChange={e => setLr(e.target.value)} className={selectCls}>
-                      {LR_OPTIONS.map(o => <option key={o}>{o}</option>)}
-                    </select>
-                  </div>
-                </>
-              )}
 
               {formError && <p className="text-sm text-red-500">{formError}</p>}
 

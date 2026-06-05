@@ -24,31 +24,30 @@ const SIZE_DIMS: Record<LabelSize, [number, number]> = {
   'DL Env': [220, 110], 'C5 Env': [229, 162], 'C4 Env': [324, 229],
 }
 
+// Adjusted spacing and font sizes to "spread out" large sizes and pack small sizes
 interface SP {
-  padMm: number
-  gapMm: number
-  lineGapPt: number 
-  tBarPt: number
-  tBarSubPt: number
-  toPt: number
-  coPt: number
-  adPt: number
-  fNmPt: number
-  fAdPt: number
-  iconMm: number
-  clPt: number
-  logoMm: number
+  padMm: number     // outer padding
+  gapMm: number     // gap pushing the middle To block away from Top/Bottom
+  tBarPt: number    // transporter name
+  tBarSubPt: number // transporter details
+  toPt: number      // "To:" label
+  coPt: number      // company name (Huge on A4)
+  adPt: number      // address / contact
+  fNmPt: number     // "From:" and Company name
+  fAdPt: number     // From address
+  iconMm: number    // care icon size
+  clPt: number      // care label font
+  logoMm: number    // Logo max-height
 }
 
-// Bumped A4 adPt to 24 and coPt to 42 for massive box readability
 const SZ: Record<LabelSize, SP> = {
-  'A4':     { padMm: 16, gapMm: 16, lineGapPt: 16, tBarPt: 26, tBarSubPt: 16, toPt: 20, coPt: 42, adPt: 24, fNmPt: 18, fAdPt: 16, iconMm: 18, clPt: 6, logoMm: 24 },
-  'A5':     { padMm: 10, gapMm: 10, lineGapPt: 8,  tBarPt: 18, tBarSubPt: 11, toPt: 14, coPt: 26, adPt: 14, fNmPt: 13, fAdPt: 11, iconMm: 12, clPt: 5, logoMm: 18 },
-  'A6':     { padMm: 7,  gapMm: 7,  lineGapPt: 4,  tBarPt: 14, tBarSubPt: 9,  toPt: 11, coPt: 20, adPt: 11, fNmPt: 10, fAdPt: 9,  iconMm: 9,  clPt: 4, logoMm: 14 },
-  'A7':     { padMm: 5,  gapMm: 5,  lineGapPt: 2,  tBarPt: 11, tBarSubPt: 7,  toPt: 9,  coPt: 15, adPt: 9,  fNmPt: 8,  fAdPt: 7,  iconMm: 7,  clPt: 3, logoMm: 10 },
-  'C4 Env': { padMm: 12, gapMm: 12, lineGapPt: 12, tBarPt: 22, tBarSubPt: 12, toPt: 16, coPt: 30, adPt: 16, fNmPt: 14, fAdPt: 12, iconMm: 14, clPt: 5, logoMm: 20 },
-  'C5 Env': { padMm: 10, gapMm: 10, lineGapPt: 6,  tBarPt: 16, tBarSubPt: 10, toPt: 12, coPt: 24, adPt: 12, fNmPt: 11, fAdPt: 10, iconMm: 10, clPt: 4, logoMm: 16 },
-  'DL Env': { padMm: 8,  gapMm: 8,  lineGapPt: 4,  tBarPt: 12, tBarSubPt: 8,  toPt: 10, coPt: 18, adPt: 10, fNmPt: 9,  fAdPt: 8,  iconMm: 8,  clPt: 4, logoMm: 12 },
+  'A4':     { padMm: 16, gapMm: 16, tBarPt: 24, tBarSubPt: 14, toPt: 18, coPt: 36, adPt: 18, fNmPt: 16, fAdPt: 14, iconMm: 15, clPt: 6, logoMm: 24 },
+  'A5':     { padMm: 10, gapMm: 10, tBarPt: 18, tBarSubPt: 11, toPt: 14, coPt: 26, adPt: 14, fNmPt: 13, fAdPt: 11, iconMm: 12, clPt: 5, logoMm: 18 },
+  'A6':     { padMm: 7,  gapMm: 7,  tBarPt: 14, tBarSubPt: 9,  toPt: 11, coPt: 20, adPt: 11, fNmPt: 10, fAdPt: 9,  iconMm: 9,  clPt: 4, logoMm: 14 },
+  'A7':     { padMm: 5,  gapMm: 5,  tBarPt: 11, tBarSubPt: 7,  toPt: 9,  coPt: 15, adPt: 9,  fNmPt: 8,  fAdPt: 7,  iconMm: 7,  clPt: 3, logoMm: 10 },
+  'DL Env': { padMm: 8,  gapMm: 8,  tBarPt: 12, tBarSubPt: 8,  toPt: 10, coPt: 18, adPt: 10, fNmPt: 9,  fAdPt: 8,  iconMm: 8,  clPt: 4, logoMm: 12 },
+  'C5 Env': { padMm: 8,  gapMm: 8,  tBarPt: 14, tBarSubPt: 9,  toPt: 11, coPt: 20, adPt: 11, fNmPt: 10, fAdPt: 9,  iconMm: 9,  clPt: 4, logoMm: 14 },
+  'C4 Env': { padMm: 12, gapMm: 12, tBarPt: 18, tBarSubPt: 11, toPt: 14, coPt: 26, adPt: 14, fNmPt: 13, fAdPt: 11, iconMm: 12, clPt: 5, logoMm: 18 },
 }
 
 const ENV: LabelSize[] = ['DL Env', 'C5 Env', 'C4 Env']
@@ -67,6 +66,7 @@ const CARE_KEY_MAP: Record<CareSymbol, CareKey> = {
   'This Side Up': 'up', 'Do Not Bend': 'nobend',
 }
 
+// Inner SVG content per care symbol
 const CARE_SVG_HTML: Record<CareKey, string> = {
   'fragile': '<path d="M9 2 7 6h2v6l-2 3v5h8v-5l-2-3V6h2z"/>',
   'glass':   '<path d="M6 3 7 21h10L18 3z"/><line x1="6" y1="10" x2="18" y2="10"/>',
@@ -75,8 +75,10 @@ const CARE_SVG_HTML: Record<CareKey, string> = {
   'nobend':  '<rect x="3" y="6" width="18" height="12" rx="1"/><line x1="3" y1="3" x2="21" y2="21"/>',
 }
 
-const MM = 3.78
-const PT = (25.4 / 72) * MM
+const MM = 3.78                 // mm → px roughly
+const PT = (25.4 / 72) * MM    // pt → px
+
+// ─── Preview sub-components ─────────────────────────────────────────────────
 
 function CareSvgContent({ c }: { c: CareKey }) {
   return <g dangerouslySetInnerHTML={{ __html: CARE_SVG_HTML[c] }} />
@@ -102,6 +104,8 @@ function CareRow({ careKeys, sp, isEnv }: { careKeys: CareKey[]; sp: SP; isEnv: 
     </div>
   )
 }
+
+// ─── Print HTML builder ──────────────────────────────────────────────────────
 
 export function buildPrintHTML(
   size: PrintSize,
@@ -141,11 +145,7 @@ export function buildPrintHTML(
   const customerName = esc(customer?.company_name || '')
   const customerAddress = nl2br(customer?.address || '')
   const customerPinState = esc([customer?.pin, customer?.state, customer?.country].filter(Boolean).join(', '))
-  
   const contacts = (customer?.contacts ?? []).map(c => `${esc(c?.name)}${c?.phone ? ` : ${esc(c.phone)}` : ''}`).filter(Boolean)
-  const contactsHtml = contacts.length 
-    ? `<div>${contacts.map(c => `<div style="font-size: ${sp.adPt}pt; font-weight: 800; margin-top: 4pt;">${c}</div>`).join('')}</div>`
-    : ''
   
   const bottomPhones = [tenant?.phone, ...(tenant?.extra_phones ?? [])].filter(Boolean).join(' / ')
   const bottomAddress = [tenant?.address, tenant?.pin, tenant?.state].filter(Boolean).join(', ')
@@ -157,22 +157,17 @@ export function buildPrintHTML(
 <head>
   <meta charset="utf-8">
   <style>
-    /* KEY FIX: Envelope orientation uses generic 'landscape' rule without mm */
-    @page { 
-      margin: 0; 
-      ${isEnv ? 'size: landscape;' : ''} 
-    }
+    /* Setting margin: 0 combined with strict absolute sizing pins the print 
+       to the top-left corner, saving paper when printing small labels on A4 */
+    @page { margin: 0; }
     html, body { 
       margin: 0 !important; padding: 0 !important; 
-      /* DO NOT restrict body width/height. Let it span the physical page so it doesn't auto-center */
-      width: 100%; height: 100%;
       background: white;
       font-family: Arial, Helvetica, sans-serif; color: #000; box-sizing: border-box; 
       -webkit-print-color-adjust: exact; print-color-adjust: exact; 
     }
     .sheet { 
-      /* KEY FIX: 'fixed' completely disables browser auto-centering. Locks to top-left corner. */
-      position: fixed;
+      position: absolute;
       top: 0; left: 0;
       width: ${pw}mm !important; height: ${ph}mm !important; 
       padding: ${sp.padMm}mm; 
@@ -183,29 +178,21 @@ export function buildPrintHTML(
       padding-bottom: 2.5mm; margin-bottom: ${sp.gapMm}mm; flex-shrink: 0; 
     }
     
-    .middle { flex-grow: 1; display: flex; flex-direction: column; min-height: 0; }
-    .middle-inner { display: flex; flex-direction: column; }
+    /* Vertically center the To block automatically */
+    .middle { flex-grow: 1; display: flex; flex-direction: column; justify-content: center; min-height: 0; }
     
     .bottom { 
       border-top: 2pt solid #000; padding-top: 2.5mm; 
       margin-top: ${sp.gapMm}mm; flex-shrink: 0; 
     }
-
     ${isEnv ? `
-      /* ENVELOPES: TO in middle right, FROM absolute bottom left */
-      .middle { justify-content: center; }
-      .middle-inner { margin-left: 45%; gap: ${sp.lineGapPt}pt; }
-      
+      .middle-inner { padding-left: 40%; }
       .bottom {
-        position: absolute; left: ${sp.padMm}mm; bottom: ${sp.padMm}mm; width: 40%;
+        position: absolute; left: ${sp.padMm}mm; top: 0; bottom: 0; width: 36%;
         border-top: none; padding-top: 0; margin-top: 0;
-        display: flex; flex-direction: column; justify-content: flex-end; padding-right: 3mm;
+        display: flex; flex-direction: column; justify-content: center; padding-right: 3mm;
       }
-    ` : `
-      /* A4/PORTRAIT LABELS: Space-evenly distributes the blocks to cover empty space! */
-      .middle { justify-content: flex-start; }
-      .middle-inner { flex-grow: 1; justify-content: space-evenly; width: 100%; padding-top: 5mm; padding-bottom: 5mm; }
-    `}
+    ` : '.middle-inner { width: 100%; }'}
   </style>
 </head>
 <body>
@@ -219,13 +206,11 @@ export function buildPrintHTML(
     <div class="middle">
       <div class="middle-inner">
         ${careHtml}
-        <div>
-          <div style="font-size: ${sp.toPt}pt; font-weight: 800; text-decoration: underline;">To:</div>
-          <div style="font-size: ${sp.coPt}pt; font-weight: 900; line-height: 1.05; word-break: break-word; margin-top: 4pt;">${customerName}</div>
-        </div>
-        <div style="font-size: ${sp.adPt}pt; line-height: 1.4; white-space: pre-wrap;">${customerAddress}</div>
-        ${customerPinState ? `<div style="font-size: ${sp.adPt}pt; color: #333;">${customerPinState}</div>` : ''}
-        ${contactsHtml}
+        <div style="font-size: ${sp.toPt}pt; font-weight: 800; text-decoration: underline;">To:</div>
+        <div style="font-size: ${sp.coPt}pt; font-weight: 900; line-height: 1.05; word-break: break-word; margin-top: 4pt;">${customerName}</div>
+        <div style="font-size: ${sp.adPt}pt; line-height: 1.4; margin-top: 6pt;">${customerAddress}</div>
+        <div style="font-size: ${sp.adPt}pt; color: #333; margin-top: 2pt;">${customerPinState}</div>
+        ${contacts.map(c => `<div style="font-size: ${sp.adPt}pt; font-weight: 800; margin-top: 3pt;">${c}</div>`).join('')}
       </div>
     </div>
     
@@ -247,12 +232,16 @@ export function buildPrintHTML(
 </html>`
 }
 
+// ─── Main component ──────────────────────────────────────────────────────────
+
 export default function PrintSection({ tenant, customers, transporters, defaultCustomer, onPrintDone }: Props) {
+  // Customer search
   const [selCustId, setSelCustId] = useState(defaultCustomer?.id ?? '')
   const [custSearch, setCustSearch] = useState(defaultCustomer?.company_name ?? '')
   const [showCustList, setShowCustList] = useState(false)
   const custRef = useRef<HTMLDivElement>(null)
 
+  // Transporter search
   const [selTransId, setSelTransId] = useState('')
   const [transSearch, setTransSearch] = useState('')
   const [showTransList, setShowTransList] = useState(false)
@@ -287,6 +276,7 @@ export default function PrintSection({ tenant, customers, transporters, defaultC
     return q ? transporters.filter(t => t.name.toLowerCase().includes(q)) : transporters
   }, [transporters, transSearch, selTransId])
 
+  // Close dropdowns on outside click
   useEffect(() => {
     function h(e: MouseEvent) {
       if (custRef.current && !custRef.current.contains(e.target as Node)) setShowCustList(false)
@@ -305,6 +295,7 @@ export default function PrintSection({ tenant, customers, transporters, defaultC
   }, [selCustId])
 
   useEffect(() => { setBranch(''); setMode(''); setFreight(''); setLr('') }, [selTransId])
+
   useEffect(() => { if (showFrom) setSelPhones([...allPhones]) }, [showFrom])
   useEffect(() => { setSelPhones([...allPhones]) }, [])
 
@@ -358,6 +349,8 @@ export default function PrintSection({ tenant, customers, transporters, defaultC
   const scale = PREVIEW_W / (pw * MM)
   const previewH = Math.round(ph * MM * scale)
 
+  // ── Preview building blocks ───────────────────────────────────────────────
+
   const pvCareRow = careSym.length > 0 ? <CareRow careKeys={careSym.map(s => CARE_KEY_MAP[s])} sp={sp} isEnv={isEnv} /> : null
 
   const pvTBar = transporter ? (
@@ -371,29 +364,16 @@ export default function PrintSection({ tenant, customers, transporters, defaultC
     </div>
   ) : null
 
-  const customerPinState = [customer?.pin, customer?.state, customer?.country].filter(Boolean).join(', ')
-  const activeContacts = customer?.contacts.filter((_, i) => selContacts.includes(i)) || []
-
   const pvToBlock = customer ? (
-    <div style={{ 
-      ...(isEnv ? { marginLeft: '45%' } : { width: '100%', flexGrow: 1 }), 
-      display: 'flex', flexDirection: 'column', 
-      ...(isEnv ? { gap: `${sp.lineGapPt}pt`, justifyContent: 'center' } : { justifyContent: 'space-evenly', paddingTop: '5mm', paddingBottom: '5mm' }) 
-    }}>
+    <div style={{ width: '100%', ...(isEnv ? { paddingLeft: '40%' } : {}) }}>
       {pvCareRow}
-      <div>
-        <div style={{ fontSize: sp.toPt * PT, fontWeight: 800, textDecoration: 'underline' }}>To:</div>
-        <div style={{ fontSize: sp.coPt * PT, fontWeight: 900, lineHeight: 1.05, wordBreak: 'break-word', marginTop: 4 * PT }}>{customer.company_name}</div>
-      </div>
-      <div style={{ fontSize: sp.adPt * PT, lineHeight: 1.4, whiteSpace: 'pre-wrap' }}>{customer.address}</div>
-      {customerPinState && <div style={{ fontSize: sp.adPt * PT, color: '#333' }}>{customerPinState}</div>}
-      {activeContacts.length > 0 && (
-        <div>
-          {activeContacts.map((ct, i) => (
-            <div key={i} style={{ fontSize: sp.adPt * PT, fontWeight: 800, marginTop: 4 * PT }}>{ct.name}{ct.phone ? ` : ${ct.phone}` : ''}</div>
-          ))}
-        </div>
-      )}
+      <div style={{ fontSize: sp.toPt * PT, fontWeight: 800, textDecoration: 'underline' }}>To:</div>
+      <div style={{ fontSize: sp.coPt * PT, fontWeight: 900, lineHeight: 1.05, wordBreak: 'break-word', marginTop: 4 * PT }}>{customer.company_name}</div>
+      <div style={{ fontSize: sp.adPt * PT, lineHeight: 1.4, marginTop: 6 * PT, whiteSpace: 'pre-wrap' }}>{customer.address}</div>
+      <div style={{ fontSize: sp.adPt * PT, color: '#333', marginTop: 2 * PT }}>{[customer.pin, customer.state, customer.country].filter(Boolean).join(', ')}</div>
+      {customer.contacts.filter((_, i) => selContacts.includes(i)).map((ct, i) => (
+        <div key={i} style={{ fontSize: sp.adPt * PT, fontWeight: 800, marginTop: 3 * PT }}>{ct.name}{ct.phone ? ` : ${ct.phone}` : ''}</div>
+      ))}
     </div>
   ) : null
 
@@ -418,11 +398,12 @@ export default function PrintSection({ tenant, customers, transporters, defaultC
   ) : null
 
   const pvFromEnv = showFrom ? (
-    <div style={{ position: 'absolute', left: sp.padMm * MM, bottom: sp.padMm * MM, width: '40%', display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', paddingRight: 3 * MM }}>
+    <div style={{ position: 'absolute', left: sp.padMm * MM * scale, top: 0, bottom: 0, width: '36%', display: 'flex', flexDirection: 'column', justifyContent: 'center', paddingRight: 3 * MM }}>
       {pvFromInner}
     </div>
   ) : null
 
+  // Style helpers for side panel
   const inp = 'w-full rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-700 outline-none transition focus:border-[#14B8A6] focus:ring-2 focus:ring-[#14B8A6]/20 bg-white'
   const sec = 'mb-5'
   const hd = 'text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2'
@@ -432,22 +413,34 @@ export default function PrintSection({ tenant, customers, transporters, defaultC
 
   return (
     <div className="flex h-full overflow-hidden">
+
+      {/* ── Controls panel ───────────────────────────────────────────── */}
       <div className="w-[420px] shrink-0 overflow-y-auto border-r border-slate-200 bg-white p-5">
+
+        {/* Customer */}
         <div className={sec}>
           <p className={hd}>Customer *</p>
           <div className="relative" ref={custRef}>
             <div className="relative">
-              <input type="text" value={custSearch} onChange={e => { setCustSearch(e.target.value); setSelCustId(''); setShowCustList(true) }} onFocus={() => setShowCustList(true)} placeholder="Search customer…" className={inp + (custSearch ? ' pr-8' : '')} />
+              <input type="text" value={custSearch}
+                onChange={e => { setCustSearch(e.target.value); setSelCustId(''); setShowCustList(true) }}
+                onFocus={() => setShowCustList(true)}
+                placeholder="Search customer…"
+                className={inp + (custSearch ? ' pr-8' : '')} />
               {custSearch && <button onClick={clearCust} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">{xBtn}</button>}
             </div>
             {showCustList && (
               <div className={dropWrap}>
-                {filteredCusts.length === 0 ? <div className="px-3 py-2 text-sm text-slate-400">No customers found</div> : filteredCusts.map(c => <button key={c.id} onMouseDown={() => pickCust(c)} className={dropItem(c.id === selCustId)}>{c.company_name}</button>)}
+                {filteredCusts.length === 0
+                  ? <div className="px-3 py-2 text-sm text-slate-400">No customers found</div>
+                  : filteredCusts.map(c => <button key={c.id} onMouseDown={() => pickCust(c)} className={dropItem(c.id === selCustId)}>{c.company_name}</button>)
+                }
               </div>
             )}
           </div>
         </div>
 
+        {/* Contacts */}
         {customer && customer.contacts.length > 0 && (
           <div className={sec}>
             <p className={hd}>Contacts</p>
@@ -463,39 +456,69 @@ export default function PrintSection({ tenant, customers, transporters, defaultC
           </div>
         )}
 
+        {/* Transporter */}
         <div className={sec}>
           <p className={hd}>Transporter (optional)</p>
           <div className="relative" ref={transRef}>
             <div className="relative">
-              <input type="text" value={transSearch} onChange={e => { setTransSearch(e.target.value); setSelTransId(''); setShowTransList(true) }} onFocus={() => setShowTransList(true)} placeholder="Search transporter…" className={inp + (transSearch ? ' pr-8' : '')} />
+              <input type="text" value={transSearch}
+                onChange={e => { setTransSearch(e.target.value); setSelTransId(''); setShowTransList(true) }}
+                onFocus={() => setShowTransList(true)}
+                placeholder="Search transporter…"
+                className={inp + (transSearch ? ' pr-8' : '')} />
               {transSearch && <button onClick={clearTrans} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">{xBtn}</button>}
             </div>
             {showTransList && (
               <div className={dropWrap}>
-                {filteredTrans.length === 0 ? <div className="px-3 py-2 text-sm text-slate-400">No transporters found</div> : filteredTrans.map(t => (
+                {filteredTrans.length === 0
+                  ? <div className="px-3 py-2 text-sm text-slate-400">No transporters found</div>
+                  : filteredTrans.map(t => (
                     <button key={t.id} onMouseDown={() => pickTrans(t)} className={dropItem(t.id === selTransId)}>
                       <span className="font-medium">{t.name}</span>
                       <span className="ml-2 text-xs text-slate-400">{t.type === 'courier' ? 'Courier' : 'Transport'}</span>
                     </button>
-                  ))}
+                  ))
+                }
               </div>
             )}
           </div>
           {transporter && (
             <div className="mt-3 space-y-2.5 rounded-lg bg-slate-50 p-3">
-              <div><label className="block text-xs font-medium text-slate-500 mb-1">Branch</label><input value={branch} onChange={e => setBranch(e.target.value)} placeholder="To branch — optional" className={inp} /></div>
+              <div>
+                <label className="block text-xs font-medium text-slate-500 mb-1">Branch</label>
+                <input value={branch} onChange={e => setBranch(e.target.value)} placeholder="To branch — optional" className={inp} />
+              </div>
               {transporter.type === 'courier' ? (
-                <div><label className="block text-xs font-medium text-slate-500 mb-1">Mode</label><select value={mode} onChange={e => setMode(e.target.value)} className={inp}><option value="">— optional —</option>{MODE_OPTS.map(o => <option key={o}>{o}</option>)}</select></div>
+                <div>
+                  <label className="block text-xs font-medium text-slate-500 mb-1">Mode</label>
+                  <select value={mode} onChange={e => setMode(e.target.value)} className={inp}>
+                    <option value="">— optional —</option>
+                    {MODE_OPTS.map(o => <option key={o}>{o}</option>)}
+                  </select>
+                </div>
               ) : (
                 <>
-                  <div><label className="block text-xs font-medium text-slate-500 mb-1">Freight</label><select value={freight} onChange={e => setFreight(e.target.value)} className={inp}><option value="">— optional —</option>{FREIGHT_OPTS.map(o => <option key={o}>{o}</option>)}</select></div>
-                  <div><label className="block text-xs font-medium text-slate-500 mb-1">LR</label><select value={lr} onChange={e => setLr(e.target.value)} className={inp}><option value="">— optional —</option>{LR_OPTS.map(o => <option key={o}>{o}</option>)}</select></div>
+                  <div>
+                    <label className="block text-xs font-medium text-slate-500 mb-1">Freight</label>
+                    <select value={freight} onChange={e => setFreight(e.target.value)} className={inp}>
+                      <option value="">— optional —</option>
+                      {FREIGHT_OPTS.map(o => <option key={o}>{o}</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-slate-500 mb-1">LR</label>
+                    <select value={lr} onChange={e => setLr(e.target.value)} className={inp}>
+                      <option value="">— optional —</option>
+                      {LR_OPTS.map(o => <option key={o}>{o}</option>)}
+                    </select>
+                  </div>
                 </>
               )}
             </div>
           )}
         </div>
 
+        {/* From toggle */}
         <div className={sec}>
           <label className="flex items-center gap-2.5 cursor-pointer">
             <input type="checkbox" checked={showFrom} onChange={e => setShowFrom(e.target.checked)} className="h-4 w-4 rounded accent-[#0F766E]" />
@@ -514,19 +537,29 @@ export default function PrintSection({ tenant, customers, transporters, defaultC
           )}
         </div>
 
+        {/* Size chips */}
         <div className={sec}>
           <p className={hd}>Paper Size</p>
           <div className="flex flex-wrap gap-1.5">
-            {SIZES.map(s => <button key={s} type="button" onClick={() => setSize(s)} className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition ${size === s ? 'bg-[#0F766E] text-white' : 'border border-slate-200 text-slate-600 hover:border-[#0F766E] hover:text-[#0F766E]'}`}>{s}</button>)}
+            {SIZES.map(s => (
+              <button key={s} type="button" onClick={() => setSize(s)}
+                className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition ${size === s ? 'bg-[#0F766E] text-white' : 'border border-slate-200 text-slate-600 hover:border-[#0F766E] hover:text-[#0F766E]'}`}>
+                {s}
+              </button>
+            ))}
           </div>
         </div>
 
+        {/* Care chips */}
         <div className={sec}>
           <p className={hd}>Handle With Care</p>
           <div className="flex flex-wrap gap-2">
             {CARE_SYMBOLS.map(sym => (
-              <button key={sym} type="button" onClick={() => toggleCare(sym)} className={`flex flex-col items-center gap-1.5 rounded-xl border-2 px-3 py-2.5 min-w-[80px] transition-all ${careSym.includes(sym) ? 'border-[#0F766E] bg-[#0F766E]/10 text-[#0F766E]' : 'border-slate-200 text-slate-500 hover:border-slate-400 hover:text-slate-700'}`}>
-                <svg viewBox="0 0 24 24" width={28} height={28} fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round"><CareSvgContent c={CARE_KEY_MAP[sym]} /></svg>
+              <button key={sym} type="button" onClick={() => toggleCare(sym)}
+                className={`flex flex-col items-center gap-1.5 rounded-xl border-2 px-3 py-2.5 min-w-[80px] transition-all ${careSym.includes(sym) ? 'border-[#0F766E] bg-[#0F766E]/10 text-[#0F766E]' : 'border-slate-200 text-slate-500 hover:border-slate-400 hover:text-slate-700'}`}>
+                <svg viewBox="0 0 24 24" width={28} height={28} fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round">
+                  <CareSvgContent c={CARE_KEY_MAP[sym]} />
+                </svg>
                 <span className="text-[11px] font-semibold text-center leading-tight">{sym}</span>
               </button>
             ))}
@@ -535,19 +568,25 @@ export default function PrintSection({ tenant, customers, transporters, defaultC
 
         {printErr && <p className="mb-3 text-sm text-red-500">{printErr}</p>}
 
+        {/* Buttons */}
         <div className="space-y-2 sticky bottom-0 bg-white pt-2 border-t border-slate-100">
-          <button onClick={handlePrint} disabled={isPending} className="flex w-full items-center justify-center gap-2 rounded-lg bg-[#0F766E] py-3 text-sm font-bold text-white hover:bg-[#0d6b63] disabled:opacity-60 transition">
+          <button onClick={handlePrint} disabled={isPending}
+            className="flex w-full items-center justify-center gap-2 rounded-lg bg-[#0F766E] py-3 text-sm font-bold text-white hover:bg-[#0d6b63] disabled:opacity-60 transition">
             <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M5 4v3H4a2 2 0 00-2 2v3a2 2 0 002 2h1v2a1 1 0 001 1h8a1 1 0 001-1v-2h1a2 2 0 002-2V9a2 2 0 00-2-2h-1V4a1 1 0 00-1-1H6a1 1 0 00-1 1zm2 0h6v3H7V4zm-1 9h8v3H6v-3zm2-4a1 1 0 100 2 1 1 0 000-2z" clipRule="evenodd" /></svg>
             {isPending ? 'Saving…' : 'Print Label'}
           </button>
         </div>
       </div>
 
+      {/* ── Preview panel ────────────────────────────────────────────── */}
       <div className="flex-1 overflow-auto bg-slate-100 p-6 flex flex-col items-center">
         <p className="mb-4 text-xs font-semibold text-slate-500 uppercase tracking-wide">Live Preview — {size}</p>
+
         {!customer ? (
           <div className="flex flex-col items-center justify-center rounded-2xl border-2 border-dashed border-slate-300 bg-white px-8 py-16 text-center" style={{ width: PREVIEW_W }}>
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-10 w-10 text-slate-300 mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-10 w-10 text-slate-300 mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            </svg>
             <p className="text-sm text-slate-400">Select a customer to preview the label</p>
           </div>
         ) : (
@@ -561,14 +600,19 @@ export default function PrintSection({ tenant, customers, transporters, defaultC
               position: 'relative',
             }}>
               {pvTBar}
-              <div style={{ flexGrow: 1, display: 'flex', flexDirection: 'column', ...(isEnv ? { justifyContent: 'center' } : { justifyContent: 'space-evenly', paddingTop: '5mm', paddingBottom: '5mm' }), minHeight: 0 }}>
+              
+              <div style={{ flexGrow: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', minHeight: 0 }}>
                 {pvToBlock}
               </div>
+
               {isEnv ? pvFromEnv : pvFromPortrait}
             </div>
           </div>
         )}
-        <p className="mt-3 text-xs text-slate-400">{pw}mm × {ph}mm &nbsp;·&nbsp; Screen preview exactly matches print dimensions</p>
+
+        <p className="mt-3 text-xs text-slate-400">
+          {pw}mm × {ph}mm &nbsp;·&nbsp; Screen preview exactly matches print dimensions
+        </p>
       </div>
     </div>
   )

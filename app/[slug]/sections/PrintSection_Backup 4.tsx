@@ -24,6 +24,7 @@ const SIZE_DIMS: Record<LabelSize, [number, number]> = {
   'DL Env': [220, 110], 'C5 Env': [229, 162], 'C4 Env': [324, 229],
 }
 
+// Added lineGapPt to dynamically "spread" text on larger sizes
 interface SP {
   padMm: number
   gapMm: number
@@ -40,9 +41,8 @@ interface SP {
   logoMm: number
 }
 
-// Bumped A4 adPt to 24 and coPt to 42 for massive box readability
 const SZ: Record<LabelSize, SP> = {
-  'A4':     { padMm: 16, gapMm: 16, lineGapPt: 16, tBarPt: 26, tBarSubPt: 16, toPt: 20, coPt: 42, adPt: 24, fNmPt: 18, fAdPt: 16, iconMm: 18, clPt: 6, logoMm: 24 },
+  'A4':     { padMm: 16, gapMm: 16, lineGapPt: 16, tBarPt: 24, tBarSubPt: 14, toPt: 18, coPt: 36, adPt: 18, fNmPt: 16, fAdPt: 14, iconMm: 15, clPt: 6, logoMm: 24 },
   'A5':     { padMm: 10, gapMm: 10, lineGapPt: 8,  tBarPt: 18, tBarSubPt: 11, toPt: 14, coPt: 26, adPt: 14, fNmPt: 13, fAdPt: 11, iconMm: 12, clPt: 5, logoMm: 18 },
   'A6':     { padMm: 7,  gapMm: 7,  lineGapPt: 4,  tBarPt: 14, tBarSubPt: 9,  toPt: 11, coPt: 20, adPt: 11, fNmPt: 10, fAdPt: 9,  iconMm: 9,  clPt: 4, logoMm: 14 },
   'A7':     { padMm: 5,  gapMm: 5,  lineGapPt: 2,  tBarPt: 11, tBarSubPt: 7,  toPt: 9,  coPt: 15, adPt: 9,  fNmPt: 8,  fAdPt: 7,  iconMm: 7,  clPt: 3, logoMm: 10 },
@@ -141,11 +141,7 @@ export function buildPrintHTML(
   const customerName = esc(customer?.company_name || '')
   const customerAddress = nl2br(customer?.address || '')
   const customerPinState = esc([customer?.pin, customer?.state, customer?.country].filter(Boolean).join(', '))
-  
   const contacts = (customer?.contacts ?? []).map(c => `${esc(c?.name)}${c?.phone ? ` : ${esc(c.phone)}` : ''}`).filter(Boolean)
-  const contactsHtml = contacts.length 
-    ? `<div>${contacts.map(c => `<div style="font-size: ${sp.adPt}pt; font-weight: 800; margin-top: 4pt;">${c}</div>`).join('')}</div>`
-    : ''
   
   const bottomPhones = [tenant?.phone, ...(tenant?.extra_phones ?? [])].filter(Boolean).join(' / ')
   const bottomAddress = [tenant?.address, tenant?.pin, tenant?.state].filter(Boolean).join(', ')
@@ -157,22 +153,16 @@ export function buildPrintHTML(
 <head>
   <meta charset="utf-8">
   <style>
-    /* KEY FIX: Envelope orientation uses generic 'landscape' rule without mm */
-    @page { 
-      margin: 0; 
-      ${isEnv ? 'size: landscape;' : ''} 
-    }
+    /* Added "landscape" dynamically if envelope to force horizontal print alignment */
+    @page { size: ${pw}mm ${ph}mm ${isEnv ? 'landscape' : ''}; margin: 0; }
     html, body { 
       margin: 0 !important; padding: 0 !important; 
-      /* DO NOT restrict body width/height. Let it span the physical page so it doesn't auto-center */
-      width: 100%; height: 100%;
       background: white;
       font-family: Arial, Helvetica, sans-serif; color: #000; box-sizing: border-box; 
       -webkit-print-color-adjust: exact; print-color-adjust: exact; 
     }
     .sheet { 
-      /* KEY FIX: 'fixed' completely disables browser auto-centering. Locks to top-left corner. */
-      position: fixed;
+      position: absolute;
       top: 0; left: 0;
       width: ${pw}mm !important; height: ${ph}mm !important; 
       padding: ${sp.padMm}mm; 
@@ -183,8 +173,12 @@ export function buildPrintHTML(
       padding-bottom: 2.5mm; margin-bottom: ${sp.gapMm}mm; flex-shrink: 0; 
     }
     
-    .middle { flex-grow: 1; display: flex; flex-direction: column; min-height: 0; }
-    .middle-inner { display: flex; flex-direction: column; }
+    .middle { flex-grow: 1; display: flex; flex-direction: column; justify-content: center; min-height: 0; }
+    
+    /* Using display: flex and gap spreads out the address lines beautifully on big paper */
+    .middle-inner {
+      display: flex; flex-direction: column; gap: ${sp.lineGapPt}pt;
+    }
     
     .bottom { 
       border-top: 2pt solid #000; padding-top: 2.5mm; 
@@ -192,20 +186,14 @@ export function buildPrintHTML(
     }
 
     ${isEnv ? `
-      /* ENVELOPES: TO in middle right, FROM absolute bottom left */
-      .middle { justify-content: center; }
-      .middle-inner { margin-left: 45%; gap: ${sp.lineGapPt}pt; }
-      
+      /* ENVELOPE OVERRIDES: To on right, From on bottom-left */
+      .middle-inner { margin-left: 45%; }
       .bottom {
         position: absolute; left: ${sp.padMm}mm; bottom: ${sp.padMm}mm; width: 40%;
         border-top: none; padding-top: 0; margin-top: 0;
         display: flex; flex-direction: column; justify-content: flex-end; padding-right: 3mm;
       }
-    ` : `
-      /* A4/PORTRAIT LABELS: Space-evenly distributes the blocks to cover empty space! */
-      .middle { justify-content: flex-start; }
-      .middle-inner { flex-grow: 1; justify-content: space-evenly; width: 100%; padding-top: 5mm; padding-bottom: 5mm; }
-    `}
+    ` : '.middle-inner { width: 100%; }'}
   </style>
 </head>
 <body>
@@ -224,8 +212,10 @@ export function buildPrintHTML(
           <div style="font-size: ${sp.coPt}pt; font-weight: 900; line-height: 1.05; word-break: break-word; margin-top: 4pt;">${customerName}</div>
         </div>
         <div style="font-size: ${sp.adPt}pt; line-height: 1.4; white-space: pre-wrap;">${customerAddress}</div>
-        ${customerPinState ? `<div style="font-size: ${sp.adPt}pt; color: #333;">${customerPinState}</div>` : ''}
-        ${contactsHtml}
+        <div style="font-size: ${sp.adPt}pt; color: #333;">${customerPinState}</div>
+        <div>
+          ${contacts.map(c => `<div style="font-size: ${sp.adPt}pt; font-weight: 800; margin-top: 3pt;">${c}</div>`).join('')}
+        </div>
       </div>
     </div>
     
@@ -371,29 +361,22 @@ export default function PrintSection({ tenant, customers, transporters, defaultC
     </div>
   ) : null
 
-  const customerPinState = [customer?.pin, customer?.state, customer?.country].filter(Boolean).join(', ')
-  const activeContacts = customer?.contacts.filter((_, i) => selContacts.includes(i)) || []
-
   const pvToBlock = customer ? (
-    <div style={{ 
-      ...(isEnv ? { marginLeft: '45%' } : { width: '100%', flexGrow: 1 }), 
-      display: 'flex', flexDirection: 'column', 
-      ...(isEnv ? { gap: `${sp.lineGapPt}pt`, justifyContent: 'center' } : { justifyContent: 'space-evenly', paddingTop: '5mm', paddingBottom: '5mm' }) 
-    }}>
-      {pvCareRow}
-      <div>
-        <div style={{ fontSize: sp.toPt * PT, fontWeight: 800, textDecoration: 'underline' }}>To:</div>
-        <div style={{ fontSize: sp.coPt * PT, fontWeight: 900, lineHeight: 1.05, wordBreak: 'break-word', marginTop: 4 * PT }}>{customer.company_name}</div>
-      </div>
-      <div style={{ fontSize: sp.adPt * PT, lineHeight: 1.4, whiteSpace: 'pre-wrap' }}>{customer.address}</div>
-      {customerPinState && <div style={{ fontSize: sp.adPt * PT, color: '#333' }}>{customerPinState}</div>}
-      {activeContacts.length > 0 && (
+    <div style={{ width: '100%', ...(isEnv ? { marginLeft: '45%' } : {}) }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: `${sp.lineGapPt}pt` }}>
+        {pvCareRow}
         <div>
-          {activeContacts.map((ct, i) => (
-            <div key={i} style={{ fontSize: sp.adPt * PT, fontWeight: 800, marginTop: 4 * PT }}>{ct.name}{ct.phone ? ` : ${ct.phone}` : ''}</div>
+          <div style={{ fontSize: sp.toPt * PT, fontWeight: 800, textDecoration: 'underline' }}>To:</div>
+          <div style={{ fontSize: sp.coPt * PT, fontWeight: 900, lineHeight: 1.05, wordBreak: 'break-word', marginTop: 4 * PT }}>{customer.company_name}</div>
+        </div>
+        <div style={{ fontSize: sp.adPt * PT, lineHeight: 1.4, whiteSpace: 'pre-wrap' }}>{customer.address}</div>
+        <div style={{ fontSize: sp.adPt * PT, color: '#333' }}>{[customer.pin, customer.state, customer.country].filter(Boolean).join(', ')}</div>
+        <div>
+          {customer.contacts.filter((_, i) => selContacts.includes(i)).map((ct, i) => (
+            <div key={i} style={{ fontSize: sp.adPt * PT, fontWeight: 800, marginTop: 3 * PT }}>{ct.name}{ct.phone ? ` : ${ct.phone}` : ''}</div>
           ))}
         </div>
-      )}
+      </div>
     </div>
   ) : null
 
@@ -418,7 +401,7 @@ export default function PrintSection({ tenant, customers, transporters, defaultC
   ) : null
 
   const pvFromEnv = showFrom ? (
-    <div style={{ position: 'absolute', left: sp.padMm * MM, bottom: sp.padMm * MM, width: '40%', display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', paddingRight: 3 * MM }}>
+    <div style={{ position: 'absolute', left: sp.padMm * MM * scale, bottom: sp.padMm * MM * scale, width: '40%', display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', paddingRight: 3 * MM }}>
       {pvFromInner}
     </div>
   ) : null
@@ -561,7 +544,7 @@ export default function PrintSection({ tenant, customers, transporters, defaultC
               position: 'relative',
             }}>
               {pvTBar}
-              <div style={{ flexGrow: 1, display: 'flex', flexDirection: 'column', ...(isEnv ? { justifyContent: 'center' } : { justifyContent: 'space-evenly', paddingTop: '5mm', paddingBottom: '5mm' }), minHeight: 0 }}>
+              <div style={{ flexGrow: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', minHeight: 0 }}>
                 {pvToBlock}
               </div>
               {isEnv ? pvFromEnv : pvFromPortrait}

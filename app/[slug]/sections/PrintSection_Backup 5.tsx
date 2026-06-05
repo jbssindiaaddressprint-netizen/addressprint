@@ -24,6 +24,7 @@ const SIZE_DIMS: Record<LabelSize, [number, number]> = {
   'DL Env': [220, 110], 'C5 Env': [229, 162], 'C4 Env': [324, 229],
 }
 
+// Spacing & Font parameters carefully adjusted for auto-spreading and visual hierarchy
 interface SP {
   padMm: number
   gapMm: number
@@ -40,9 +41,8 @@ interface SP {
   logoMm: number
 }
 
-// Bumped A4 adPt to 24 and coPt to 42 for massive box readability
 const SZ: Record<LabelSize, SP> = {
-  'A4':     { padMm: 16, gapMm: 16, lineGapPt: 16, tBarPt: 26, tBarSubPt: 16, toPt: 20, coPt: 42, adPt: 24, fNmPt: 18, fAdPt: 16, iconMm: 18, clPt: 6, logoMm: 24 },
+  'A4':     { padMm: 16, gapMm: 16, lineGapPt: 16, tBarPt: 24, tBarSubPt: 14, toPt: 18, coPt: 36, adPt: 18, fNmPt: 16, fAdPt: 14, iconMm: 15, clPt: 6, logoMm: 24 },
   'A5':     { padMm: 10, gapMm: 10, lineGapPt: 8,  tBarPt: 18, tBarSubPt: 11, toPt: 14, coPt: 26, adPt: 14, fNmPt: 13, fAdPt: 11, iconMm: 12, clPt: 5, logoMm: 18 },
   'A6':     { padMm: 7,  gapMm: 7,  lineGapPt: 4,  tBarPt: 14, tBarSubPt: 9,  toPt: 11, coPt: 20, adPt: 11, fNmPt: 10, fAdPt: 9,  iconMm: 9,  clPt: 4, logoMm: 14 },
   'A7':     { padMm: 5,  gapMm: 5,  lineGapPt: 2,  tBarPt: 11, tBarSubPt: 7,  toPt: 9,  coPt: 15, adPt: 9,  fNmPt: 8,  fAdPt: 7,  iconMm: 7,  clPt: 3, logoMm: 10 },
@@ -144,7 +144,7 @@ export function buildPrintHTML(
   
   const contacts = (customer?.contacts ?? []).map(c => `${esc(c?.name)}${c?.phone ? ` : ${esc(c.phone)}` : ''}`).filter(Boolean)
   const contactsHtml = contacts.length 
-    ? `<div>${contacts.map(c => `<div style="font-size: ${sp.adPt}pt; font-weight: 800; margin-top: 4pt;">${c}</div>`).join('')}</div>`
+    ? `<div>${contacts.map(c => `<div style="font-size: ${sp.adPt}pt; font-weight: 800; margin-top: 3pt;">${c}</div>`).join('')}</div>`
     : ''
   
   const bottomPhones = [tenant?.phone, ...(tenant?.extra_phones ?? [])].filter(Boolean).join(' / ')
@@ -157,22 +157,17 @@ export function buildPrintHTML(
 <head>
   <meta charset="utf-8">
   <style>
-    /* KEY FIX: Envelope orientation uses generic 'landscape' rule without mm */
-    @page { 
-      margin: 0; 
-      ${isEnv ? 'size: landscape;' : ''} 
-    }
+    /* Removed the explicit 'landscape' text to fix CSS invalidation. 
+       The exact dimensions inherently trigger horizontal print layouts. */
+    @page { size: ${pw}mm ${ph}mm; margin: 0; }
     html, body { 
       margin: 0 !important; padding: 0 !important; 
-      /* DO NOT restrict body width/height. Let it span the physical page so it doesn't auto-center */
-      width: 100%; height: 100%;
       background: white;
       font-family: Arial, Helvetica, sans-serif; color: #000; box-sizing: border-box; 
       -webkit-print-color-adjust: exact; print-color-adjust: exact; 
     }
     .sheet { 
-      /* KEY FIX: 'fixed' completely disables browser auto-centering. Locks to top-left corner. */
-      position: fixed;
+      position: absolute;
       top: 0; left: 0;
       width: ${pw}mm !important; height: ${ph}mm !important; 
       padding: ${sp.padMm}mm; 
@@ -390,7 +385,7 @@ export default function PrintSection({ tenant, customers, transporters, defaultC
       {activeContacts.length > 0 && (
         <div>
           {activeContacts.map((ct, i) => (
-            <div key={i} style={{ fontSize: sp.adPt * PT, fontWeight: 800, marginTop: 4 * PT }}>{ct.name}{ct.phone ? ` : ${ct.phone}` : ''}</div>
+            <div key={i} style={{ fontSize: sp.adPt * PT, fontWeight: 800, marginTop: 3 * PT }}>{ct.name}{ct.phone ? ` : ${ct.phone}` : ''}</div>
           ))}
         </div>
       )}

@@ -196,15 +196,15 @@ export function buildPrintHTML(
     }
 
     ${isEnv ? `
-      /* ENVELOPES: TO in middle right, FROM reserved at bottom — fixed reserved zone so TO can never grow into FROM */
+      /* ENVELOPES: TO block and FROM block both right-aligned to match envelope window position */
       .middle { justify-content: center; max-height: calc(100% - ${sp.fromReserveMm}mm); overflow: hidden; }
-      .middle-inner { margin-left: 45%; gap: ${sp.lineGapPt}pt; max-height: 100%; overflow: hidden; }
+      .middle-inner { margin-left: 45%; margin-right: ${sp.padMm}mm; gap: ${sp.lineGapPt}pt; max-height: 100%; overflow: hidden; }
       
       .bottom {
-        position: absolute; left: ${sp.padMm}mm; bottom: ${sp.padMm}mm; width: 40%;
+        position: absolute; right: ${sp.padMm}mm; bottom: ${sp.padMm}mm; width: 40%;
         height: ${sp.fromReserveMm - sp.padMm}mm;
         border-top: none; padding-top: 0; margin-top: 0;
-        display: flex; flex-direction: column; justify-content: flex-end; padding-right: 3mm;
+        display: flex; flex-direction: column; justify-content: flex-end; padding-right: 0; padding-left: 3mm;
         overflow: hidden;
       }
     ` : `
@@ -384,7 +384,7 @@ export default function PrintSection({ tenant, customers, transporters, defaultC
 
   const pvToBlock = customer ? (
     <div style={{ 
-      ...(isEnv ? { marginLeft: '45%', maxHeight: '100%', overflow: 'hidden' } : { width: '100%', flexGrow: 1 }), 
+      ...(isEnv ? { marginLeft: '45%', marginRight: sp.padMm * MM, maxHeight: '100%', overflow: 'hidden' } : { width: '100%', flexGrow: 1 }), 
       display: 'flex', flexDirection: 'column', 
       ...(isEnv ? { gap: `${sp.lineGapPt}pt`, justifyContent: 'center' } : { justifyContent: 'space-evenly', paddingTop: '5mm', paddingBottom: '5mm' }) 
     }}>
@@ -426,7 +426,7 @@ export default function PrintSection({ tenant, customers, transporters, defaultC
   ) : null
 
   const pvFromEnv = showFrom ? (
-    <div style={{ position: 'absolute', left: sp.padMm * MM, bottom: sp.padMm * MM, width: '40%', height: (sp.fromReserveMm - sp.padMm) * MM, display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', paddingRight: 3 * MM, overflow: 'hidden' }}>
+    <div style={{ position: 'absolute', right: sp.padMm * MM, bottom: sp.padMm * MM, width: '40%', height: (sp.fromReserveMm - sp.padMm) * MM, display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', paddingLeft: 3 * MM, overflow: 'hidden' }}>
       {pvFromInner}
     </div>
   ) : null

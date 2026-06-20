@@ -161,10 +161,10 @@ export function buildPrintHTML(
 <head>
   <meta charset="utf-8">
   <style>
-    /* KEY FIX: Envelope orientation uses generic 'landscape' rule without mm */
+    /* KEY FIX: Declare exact page dimensions so browser doesn't fall back to loaded tray paper size */
     @page { 
       margin: 0; 
-      ${isEnv ? 'size: landscape;' : ''} 
+      size: ${pw}mm ${ph}mm;
     }
     html, body { 
       margin: 0 !important; padding: 0 !important; 

@@ -38,17 +38,19 @@ interface SP {
   iconMm: number
   clPt: number
   logoMm: number
+  fromReserveMm: number
 }
 
 // Bumped A4 adPt to 24 and coPt to 42 for massive box readability
+// fromReserveMm = fixed bottom zone height (envelopes only) reserved for FROM block so TO can never grow into it and cut it off
 const SZ: Record<LabelSize, SP> = {
-  'A4':     { padMm: 16, gapMm: 16, lineGapPt: 16, tBarPt: 26, tBarSubPt: 16, toPt: 20, coPt: 42, adPt: 24, fNmPt: 18, fAdPt: 16, iconMm: 18, clPt: 6, logoMm: 24 },
-  'A5':     { padMm: 10, gapMm: 10, lineGapPt: 8,  tBarPt: 18, tBarSubPt: 11, toPt: 14, coPt: 26, adPt: 14, fNmPt: 13, fAdPt: 11, iconMm: 12, clPt: 5, logoMm: 18 },
-  'A6':     { padMm: 7,  gapMm: 7,  lineGapPt: 4,  tBarPt: 14, tBarSubPt: 9,  toPt: 11, coPt: 20, adPt: 11, fNmPt: 10, fAdPt: 9,  iconMm: 9,  clPt: 4, logoMm: 14 },
-  'A7':     { padMm: 5,  gapMm: 5,  lineGapPt: 2,  tBarPt: 11, tBarSubPt: 7,  toPt: 9,  coPt: 15, adPt: 9,  fNmPt: 8,  fAdPt: 7,  iconMm: 7,  clPt: 3, logoMm: 10 },
-  'C4 Env': { padMm: 12, gapMm: 12, lineGapPt: 12, tBarPt: 22, tBarSubPt: 12, toPt: 16, coPt: 30, adPt: 16, fNmPt: 14, fAdPt: 12, iconMm: 14, clPt: 5, logoMm: 20 },
-  'C5 Env': { padMm: 10, gapMm: 10, lineGapPt: 6,  tBarPt: 16, tBarSubPt: 10, toPt: 12, coPt: 24, adPt: 12, fNmPt: 11, fAdPt: 10, iconMm: 10, clPt: 4, logoMm: 16 },
-  'DL Env': { padMm: 8,  gapMm: 8,  lineGapPt: 4,  tBarPt: 12, tBarSubPt: 8,  toPt: 10, coPt: 18, adPt: 10, fNmPt: 9,  fAdPt: 8,  iconMm: 8,  clPt: 4, logoMm: 12 },
+  'A4':     { padMm: 16, gapMm: 16, lineGapPt: 16, tBarPt: 26, tBarSubPt: 16, toPt: 20, coPt: 42, adPt: 24, fNmPt: 18, fAdPt: 16, iconMm: 18, clPt: 6, logoMm: 24, fromReserveMm: 0 },
+  'A5':     { padMm: 10, gapMm: 10, lineGapPt: 8,  tBarPt: 18, tBarSubPt: 11, toPt: 14, coPt: 26, adPt: 14, fNmPt: 13, fAdPt: 11, iconMm: 12, clPt: 5, logoMm: 18, fromReserveMm: 0 },
+  'A6':     { padMm: 7,  gapMm: 7,  lineGapPt: 4,  tBarPt: 14, tBarSubPt: 9,  toPt: 11, coPt: 20, adPt: 11, fNmPt: 10, fAdPt: 9,  iconMm: 9,  clPt: 4, logoMm: 14, fromReserveMm: 0 },
+  'A7':     { padMm: 5,  gapMm: 5,  lineGapPt: 2,  tBarPt: 11, tBarSubPt: 7,  toPt: 9,  coPt: 13, adPt: 9,  fNmPt: 8,  fAdPt: 7,  iconMm: 7,  clPt: 3, logoMm: 10, fromReserveMm: 0 },
+  'C4 Env': { padMm: 12, gapMm: 12, lineGapPt: 12, tBarPt: 22, tBarSubPt: 12, toPt: 16, coPt: 30, adPt: 16, fNmPt: 13, fAdPt: 12, iconMm: 14, clPt: 5, logoMm: 20, fromReserveMm: 60 },
+  'C5 Env': { padMm: 10, gapMm: 10, lineGapPt: 6,  tBarPt: 16, tBarSubPt: 10, toPt: 12, coPt: 24, adPt: 12, fNmPt: 10, fAdPt: 10, iconMm: 10, clPt: 4, logoMm: 16, fromReserveMm: 48 },
+  'DL Env': { padMm: 8,  gapMm: 8,  lineGapPt: 4,  tBarPt: 10, tBarSubPt: 8,  toPt: 10, coPt: 16, adPt: 10, fNmPt: 8,  fAdPt: 8,  iconMm: 8,  clPt: 4, logoMm: 11, fromReserveMm: 40 },
 }
 
 const ENV: LabelSize[] = ['DL Env', 'C5 Env', 'C4 Env']
@@ -110,13 +112,15 @@ export function buildPrintHTML(
   transporterOptions: TransporterOptions,
   fromOn: boolean,
   tenant: Tenant,
-  care: string[]
+  care: string[],
+  inkSaver: boolean = false
 ): string {
   const labelSizeKey = (Object.keys(SIZE_KEY_MAP) as LabelSize[]).find(k => SIZE_KEY_MAP[k] === size) || 'A4'
   const sp = SZ[labelSizeKey]
   const pw = SIZE_DIMS[labelSizeKey][0]
   const ph = SIZE_DIMS[labelSizeKey][1]
   const isEnv = ['DL', 'C5', 'C4'].includes(size)
+  const bodyColor = inkSaver ? '#555' : '#000'
 
   const esc = (v: unknown) => String(v ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;')
   const nl2br = (v: unknown) => esc(v).replace(/\n/g, '<br>')
@@ -192,14 +196,16 @@ export function buildPrintHTML(
     }
 
     ${isEnv ? `
-      /* ENVELOPES: TO in middle right, FROM absolute bottom left */
-      .middle { justify-content: center; }
-      .middle-inner { margin-left: 45%; gap: ${sp.lineGapPt}pt; }
+      /* ENVELOPES: TO in middle right, FROM reserved at bottom — fixed reserved zone so TO can never grow into FROM */
+      .middle { justify-content: center; max-height: calc(100% - ${sp.fromReserveMm}mm); overflow: hidden; }
+      .middle-inner { margin-left: 45%; gap: ${sp.lineGapPt}pt; max-height: 100%; overflow: hidden; }
       
       .bottom {
         position: absolute; left: ${sp.padMm}mm; bottom: ${sp.padMm}mm; width: 40%;
+        height: ${sp.fromReserveMm - sp.padMm}mm;
         border-top: none; padding-top: 0; margin-top: 0;
         display: flex; flex-direction: column; justify-content: flex-end; padding-right: 3mm;
+        overflow: hidden;
       }
     ` : `
       /* A4/PORTRAIT LABELS: Space-evenly distributes the blocks to cover empty space! */
@@ -213,7 +219,7 @@ export function buildPrintHTML(
     ${transporterName ? `
     <div class="top">
       <div style="font-size: ${sp.tBarPt}pt; font-weight: 800;">${transporterName}</div>
-      ${transporterLine ? `<div style="margin-top: 1mm; font-size: ${sp.tBarSubPt}pt; font-weight: 400; color: #444;">${esc(transporterLine)}</div>` : ''}
+      ${transporterLine ? `<div style="margin-top: 1mm; font-size: ${sp.tBarSubPt}pt; font-weight: 400; color: ${inkSaver ? '#666' : '#444'};">${esc(transporterLine)}</div>` : ''}
     </div>` : ''}
     
     <div class="middle">
@@ -223,8 +229,8 @@ export function buildPrintHTML(
           <div style="font-size: ${sp.toPt}pt; font-weight: 800; text-decoration: underline;">To:</div>
           <div style="font-size: ${sp.coPt}pt; font-weight: 900; line-height: 1.05; word-break: break-word; margin-top: 4pt;">${customerName}</div>
         </div>
-        <div style="font-size: ${sp.adPt}pt; line-height: 1.4; white-space: pre-wrap;">${customerAddress}</div>
-        ${customerPinState ? `<div style="font-size: ${sp.adPt}pt; color: #333;">${customerPinState}</div>` : ''}
+        <div style="font-size: ${sp.adPt}pt; line-height: 1.4; white-space: pre-wrap; color: ${bodyColor};">${customerAddress}</div>
+        ${customerPinState ? `<div style="font-size: ${sp.adPt}pt; color: ${inkSaver ? '#666' : '#333'};">${customerPinState}</div>` : ''}
         ${contactsHtml}
       </div>
     </div>
@@ -234,8 +240,8 @@ export function buildPrintHTML(
       ${!isEnv ? `<div style="font-size: ${sp.fNmPt}pt; font-weight: 800; text-decoration: underline; margin-bottom: 1.5mm;">From:</div>` : ''}
       <div style="display: flex; align-items: flex-start; gap: 2.5mm;">
         ${bottomLogo}
-        <div style="flex: 1; font-size: ${sp.fAdPt}pt; line-height: 1.4;">
-          <div style="font-size: ${sp.fNmPt}pt; font-weight: 800; margin-bottom: 0.5mm;">${esc(tenant?.name || '')}</div>
+        <div style="flex: 1; font-size: ${sp.fAdPt}pt; line-height: 1.4; color: ${bodyColor};">
+          <div style="font-size: ${sp.fNmPt}pt; font-weight: 800; margin-bottom: 0.5mm; color: #000;">${esc(tenant?.name || '')}</div>
           <div>${esc(bottomAddress)}</div>
           <div>Ph: ${esc(bottomPhones)}</div>
         </div>
@@ -266,6 +272,7 @@ export default function PrintSection({ tenant, customers, transporters, defaultC
   const [showFrom, setShowFrom] = useState(true)
   const [selPhones, setSelPhones] = useState<string[]>([])
   const [size, setSize] = useState<LabelSize>('A4')
+  const [inkSaver, setInkSaver] = useState(false)
   const [careSym, setCareSym] = useState<CareSymbol[]>([])
   const [printErr, setPrintErr] = useState<string | null>(null)
   const [isPending, startTransition] = useTransition()
@@ -338,7 +345,8 @@ export default function PrintSection({ tenant, customers, transporters, defaultC
       { branch, freight, lr, mode },
       showFrom,
       filteredTenant,
-      careSym.map(s => CARE_KEY_MAP[s])
+      careSym.map(s => CARE_KEY_MAP[s]),
+      inkSaver
     )
     
     const win = window.open('', '_blank', 'width=900,height=700')
@@ -376,7 +384,7 @@ export default function PrintSection({ tenant, customers, transporters, defaultC
 
   const pvToBlock = customer ? (
     <div style={{ 
-      ...(isEnv ? { marginLeft: '45%' } : { width: '100%', flexGrow: 1 }), 
+      ...(isEnv ? { marginLeft: '45%', maxHeight: '100%', overflow: 'hidden' } : { width: '100%', flexGrow: 1 }), 
       display: 'flex', flexDirection: 'column', 
       ...(isEnv ? { gap: `${sp.lineGapPt}pt`, justifyContent: 'center' } : { justifyContent: 'space-evenly', paddingTop: '5mm', paddingBottom: '5mm' }) 
     }}>
@@ -385,12 +393,12 @@ export default function PrintSection({ tenant, customers, transporters, defaultC
         <div style={{ fontSize: sp.toPt * PT, fontWeight: 800, textDecoration: 'underline' }}>To:</div>
         <div style={{ fontSize: sp.coPt * PT, fontWeight: 900, lineHeight: 1.05, wordBreak: 'break-word', marginTop: 4 * PT }}>{customer.company_name}</div>
       </div>
-      <div style={{ fontSize: sp.adPt * PT, lineHeight: 1.4, whiteSpace: 'pre-wrap' }}>{customer.address}</div>
-      {customerPinState && <div style={{ fontSize: sp.adPt * PT, color: '#333' }}>{customerPinState}</div>}
+      <div style={{ fontSize: sp.adPt * PT, lineHeight: 1.4, whiteSpace: 'pre-wrap', color: inkSaver ? '#555' : '#000' }}>{customer.address}</div>
+      {customerPinState && <div style={{ fontSize: sp.adPt * PT, color: inkSaver ? '#666' : '#333' }}>{customerPinState}</div>}
       {activeContacts.length > 0 && (
         <div>
           {activeContacts.map((ct, i) => (
-            <div key={i} style={{ fontSize: sp.adPt * PT, fontWeight: 800, marginTop: 4 * PT }}>{ct.name}{ct.phone ? ` : ${ct.phone}` : ''}</div>
+            <div key={i} style={{ fontSize: sp.adPt * PT, fontWeight: 800, marginTop: 4 * PT, color: inkSaver ? '#555' : '#000' }}>{ct.name}{ct.phone ? ` : ${ct.phone}` : ''}</div>
           ))}
         </div>
       )}
@@ -402,8 +410,8 @@ export default function PrintSection({ tenant, customers, transporters, defaultC
       {tenant.logo_url && (
         <img src={tenant.logo_url} alt="" style={{ maxHeight: sp.logoMm * MM, maxWidth: 28 * MM, objectFit: 'contain', flexShrink: 0 }} />
       )}
-      <div style={{ flex: 1, fontSize: sp.fAdPt * PT, lineHeight: 1.4 }}>
-        <div style={{ fontSize: sp.fNmPt * PT, fontWeight: 800, marginBottom: 0.5 * MM }}>{tenant.name}</div>
+      <div style={{ flex: 1, fontSize: sp.fAdPt * PT, lineHeight: 1.4, color: inkSaver ? '#555' : '#000' }}>
+        <div style={{ fontSize: sp.fNmPt * PT, fontWeight: 800, marginBottom: 0.5 * MM, color: '#000' }}>{tenant.name}</div>
         <div>{[tenant.address, tenant.pin, tenant.state].filter(Boolean).join(', ')}</div>
         <div>Ph: {phones.join(' / ')}</div>
       </div>
@@ -418,7 +426,7 @@ export default function PrintSection({ tenant, customers, transporters, defaultC
   ) : null
 
   const pvFromEnv = showFrom ? (
-    <div style={{ position: 'absolute', left: sp.padMm * MM, bottom: sp.padMm * MM, width: '40%', display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', paddingRight: 3 * MM }}>
+    <div style={{ position: 'absolute', left: sp.padMm * MM, bottom: sp.padMm * MM, width: '40%', height: (sp.fromReserveMm - sp.padMm) * MM, display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', paddingRight: 3 * MM, overflow: 'hidden' }}>
       {pvFromInner}
     </div>
   ) : null
@@ -522,6 +530,15 @@ export default function PrintSection({ tenant, customers, transporters, defaultC
         </div>
 
         <div className={sec}>
+          <p className={hd}>Ink Mode</p>
+          <div className="flex gap-1.5">
+            <button type="button" onClick={() => setInkSaver(false)} className={`flex-1 rounded-lg px-3 py-2 text-xs font-semibold transition ${!inkSaver ? 'bg-[#0F766E] text-white' : 'border border-slate-200 text-slate-600 hover:border-[#0F766E] hover:text-[#0F766E]'}`}>⬛ Standard (Black)</button>
+            <button type="button" onClick={() => setInkSaver(true)} className={`flex-1 rounded-lg px-3 py-2 text-xs font-semibold transition ${inkSaver ? 'bg-[#0F766E] text-white' : 'border border-slate-200 text-slate-600 hover:border-[#0F766E] hover:text-[#0F766E]'}`}>◽ Ink Saver (Grey)</button>
+          </div>
+          <p className="mt-1.5 text-[11px] text-slate-400">Ink Saver lightens address and detail text to use less ink on high-volume prints. Headings stay black for readability.</p>
+        </div>
+
+        <div className={sec}>
           <p className={hd}>Handle With Care</p>
           <div className="flex flex-wrap gap-2">
             {CARE_SYMBOLS.map(sym => (
@@ -561,7 +578,7 @@ export default function PrintSection({ tenant, customers, transporters, defaultC
               position: 'relative',
             }}>
               {pvTBar}
-              <div style={{ flexGrow: 1, display: 'flex', flexDirection: 'column', ...(isEnv ? { justifyContent: 'center' } : { justifyContent: 'space-evenly', paddingTop: '5mm', paddingBottom: '5mm' }), minHeight: 0 }}>
+              <div style={{ flexGrow: 1, display: 'flex', flexDirection: 'column', ...(isEnv ? { justifyContent: 'center', maxHeight: `calc(100% - ${sp.fromReserveMm}mm)`, overflow: 'hidden' } : { justifyContent: 'space-evenly', paddingTop: '5mm', paddingBottom: '5mm' }), minHeight: 0 }}>
                 {pvToBlock}
               </div>
               {isEnv ? pvFromEnv : pvFromPortrait}

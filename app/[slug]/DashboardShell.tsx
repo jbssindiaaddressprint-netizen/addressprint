@@ -15,7 +15,7 @@ export type Section = 'dashboard' | 'customers' | 'transporters' | 'print' | 'pr
 
 // Auto-logout after this long with zero clicks/keys/scrolling — framed to customers
 // as a data-safety measure, not just a technical session limit.
-const IDLE_TIMEOUT_MS = 15 * 60 * 1000
+const IDLE_TIMEOUT_MS = 1 * 60 * 1000 // TEMP: 1 min for testing, will revert to 15 min before merge
 
 interface Props {
   tenant: Tenant

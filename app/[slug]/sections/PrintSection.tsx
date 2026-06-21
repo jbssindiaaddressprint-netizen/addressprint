@@ -176,8 +176,10 @@ export function buildPrintHTML(
     }
     .sheet { 
       /* FIX: 'fixed' broke rendering entirely in some print/PDF engines (confirmed via isolated test).
-         'relative' + exact @page size achieves the same top-left lock without that risk. */
-      position: relative;
+         'absolute' + top:0;left:0 keeps the same top-left pin (so content doesn't get
+         auto-centered if a printer ignores our custom @page size) without that blank-page risk. */
+      position: absolute;
+      top: 0; left: 0;
       width: ${pw}mm !important; height: ${ph}mm !important; 
       padding: ${sp.padMm}mm; 
       display: flex; flex-direction: column; box-sizing: border-box; overflow: hidden;

@@ -42,6 +42,12 @@ export default function OnboardForm() {
   const [preview, setPreview] = useState<string | null>(null)
   const [fileError, setFileError] = useState<string | null>(null)
   const fileRef = useRef<HTMLInputElement>(null)
+  const [password, setPassword] = useState('')
+  const [confirmPassword, setConfirmPassword] = useState('')
+  const [showPassword, setShowPassword] = useState(false)
+
+  const passwordTooShort = password.length > 0 && password.length < 6
+  const passwordMismatch = confirmPassword.length > 0 && password !== confirmPassword
 
   const locked = state.status === 'success'
 
@@ -257,6 +263,57 @@ export default function OnboardForm() {
           onChange={handleFileChange}
           className="hidden"
         />
+      </div>
+
+      {/* Password */}
+      <div>
+        <label htmlFor="password" className={labelCls}>Create a Password <Required /></label>
+        <div className="relative">
+          <input
+            id="password"
+            name="password"
+            type={showPassword ? 'text' : 'password'}
+            required
+            disabled={locked}
+            minLength={6}
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            placeholder="At least 6 characters"
+            className={`${inputNormal} pr-12`}
+          />
+          <button
+            type="button"
+            onClick={() => setShowPassword((s) => !s)}
+            className="absolute inset-y-0 right-0 flex items-center px-4 text-xs font-medium text-slate-500 hover:text-slate-300"
+          >
+            {showPassword ? 'Hide' : 'Show'}
+          </button>
+        </div>
+        {passwordTooShort && (
+          <p className="mt-1.5 text-xs text-red-400">Password must be at least 6 characters.</p>
+        )}
+        <p className="mt-1.5 text-xs text-slate-500">
+          This is what you&apos;ll use to log in to your dashboard. Keep it safe — contact support if you ever need to reset it.
+        </p>
+      </div>
+
+      {/* Confirm Password */}
+      <div>
+        <label htmlFor="confirmPassword" className={labelCls}>Confirm Password <Required /></label>
+        <input
+          id="confirmPassword"
+          name="confirmPassword"
+          type={showPassword ? 'text' : 'password'}
+          required
+          disabled={locked}
+          value={confirmPassword}
+          onChange={(e) => setConfirmPassword(e.target.value)}
+          placeholder="Re-enter your password"
+          className={inputNormal}
+        />
+        {passwordMismatch && (
+          <p className="mt-1.5 text-xs text-red-400">Passwords don&apos;t match.</p>
+        )}
       </div>
 
       {/* Server error */}

@@ -1,5 +1,6 @@
 'use server'
 
+import bcrypt from 'bcryptjs'
 import { supabaseAdmin } from '@/lib/supabase'
 
 export type OnboardState = {
@@ -47,6 +48,8 @@ export async function onboardTenant(
   const state = (formData.get('state') as string)?.trim()
   const country = ((formData.get('country') as string)?.trim()) || 'India'
   const phone = (formData.get('phone') as string)?.trim()
+  const password = (formData.get('password') as string) ?? ''
+  const confirmPassword = (formData.get('confirmPassword') as string) ?? ''
   const logo = formData.get('logo') as File | null
 
   if (!companyName) return { status: 'error', error: 'Company name is required.' }
@@ -54,6 +57,8 @@ export async function onboardTenant(
   if (!pin || !/^\d{6}$/.test(pin)) return { status: 'error', error: 'A valid 6-digit PIN code is required.' }
   if (!state) return { status: 'error', error: 'State is required.' }
   if (!phone) return { status: 'error', error: 'Phone number is required.' }
+  if (!password || password.length < 6) return { status: 'error', error: 'Password must be at least 6 characters.' }
+  if (password !== confirmPassword) return { status: 'error', error: 'Passwords do not match.' }
 
   let logoUrl: string | null = null
 
@@ -85,18 +90,36 @@ export async function onboardTenant(
 
   const slug = await generateUniqueSlug(toSlug(companyName))
 
-  const { error: dbError } = await supabaseAdmin.from('tenants').insert({
-    name: companyName,
-    address,
-    pin,
-    state,
-    country,
-    phone,
-    slug,
-    logo_url: logoUrl,
+  const { data: newTenant, error: dbError } = await supabaseAdmin
+    .from('tenants')
+    .insert({
+      name: companyName,
+      address,
+      pin,
+      state,
+      country,
+      phone,
+      slug,
+      logo_url: logoUrl,
+    })
+    .select('id')
+    .single()
+
+  if (dbError || !newTenant) return { status: 'error', error: dbError?.message ?? 'Could not create account.' }
+
+  const passwordHash = await bcrypt.hash(password, 10)
+
+  const { error: loginError } = await supabaseAdmin.from('tenant_logins').insert({
+    tenant_id: newTenant.id,
+    label: 'Owner',
+    password_hash: passwordHash,
   })
 
-  if (dbError) return { status: 'error', error: dbError.message }
+  if (loginError) {
+    // Roll back the tenant row so we don't leave a login-less account behind
+    await supabaseAdmin.from('tenants').delete().eq('id', newTenant.id)
+    return { status: 'error', error: 'Could not set up your login. Please try again.' }
+  }
 
   return { status: 'success', slug }
 }

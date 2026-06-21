@@ -161,10 +161,11 @@ export function buildPrintHTML(
 <head>
   <meta charset="utf-8">
   <style>
-    /* KEY FIX: Declare exact page dimensions so browser doesn't fall back to loaded tray paper size */
+    /* KEY FIX 1: By using size: auto vs landscape, we trick the browser into 
+       not shrinking or auto-centering our canvas on A4 paper */
     @page { 
       margin: 0; 
-      size: ${pw}mm ${ph}mm;
+      size: ${isEnv ? 'landscape' : 'auto'};
     }
     html, body { 
       margin: 0 !important; padding: 0 !important; 

@@ -68,12 +68,25 @@ export default function DashboardShell({ tenant, initialCustomers, initialTransp
   }
 
   // Background check — catches the case where someone leaves the dashboard open
-  // without clicking anything for a while.
+  // without clicking anything for a while. Also re-checks the instant the tab
+  // becomes visible/focused again, since browsers throttle timers in background
+  // tabs and a fixed interval alone can be unreliable for "switched away and back".
   useEffect(() => {
     const interval = setInterval(() => {
       bounceIfKickedOut()
     }, 15000)
-    return () => clearInterval(interval)
+
+    function handleVisible() {
+      if (document.visibilityState === 'visible') bounceIfKickedOut()
+    }
+    document.addEventListener('visibilitychange', handleVisible)
+    window.addEventListener('focus', handleVisible)
+
+    return () => {
+      clearInterval(interval)
+      document.removeEventListener('visibilitychange', handleVisible)
+      window.removeEventListener('focus', handleVisible)
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 

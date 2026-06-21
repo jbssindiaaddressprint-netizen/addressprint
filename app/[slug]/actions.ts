@@ -138,3 +138,32 @@ export async function logout(): Promise<ActionResult> {
   cookieStore.delete(SESSION_COOKIE)
   return { success: true, data: undefined }
 }
+
+// Used for periodic / on-click checks inside the dashboard (the dashboard never
+// reloads the page when switching sections, so middleware alone can't catch a
+// kicked-out session until the next hard refresh — this fills that gap).
+export async function checkSessionValid(): Promise<boolean> {
+  const cookieStore = await cookies()
+  const session = decodeSession(cookieStore.get(SESSION_COOKIE)?.value)
+  if (!session) return false
+
+  const { data: login } = await supabaseAdmin
+    .from('tenant_logins')
+    .select('session_token, is_active, tenant_id')
+    .eq('id', session.loginId)
+    .single()
+
+  if (!login) return false
+  if (!login.is_active) return false
+  if (login.tenant_id !== session.tenantId) return false
+  if (login.session_token !== session.token) return false
+  return true
+}
+
+// Clears the cookie WITHOUT touching the DB token — used when we've detected this
+// session was kicked out by another login. The DB token now belongs to that other
+// session, so we must not null it here.
+export async function clearSessionCookie(): Promise<void> {
+  const cookieStore = await cookies()
+  cookieStore.delete(SESSION_COOKIE)
+}

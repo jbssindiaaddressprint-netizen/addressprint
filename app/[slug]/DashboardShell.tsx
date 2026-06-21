@@ -1,10 +1,10 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Image from 'next/image'
 import type { Tenant, Customer, Transporter } from './types'
-import { logout } from './actions'
+import { logout, checkSessionValid, clearSessionCookie } from './actions'
 import DashboardSection from './sections/DashboardSection'
 import CustomersSection from './sections/CustomersSection'
 import TransportersSection from './sections/TransportersSection'
@@ -58,7 +58,28 @@ export default function DashboardShell({ tenant, initialCustomers, initialTransp
     router.push(`/${tenant.slug}/login`)
   }
 
-  function navigate(s: Section, customer?: Customer) {
+  async function bounceIfKickedOut(): Promise<boolean> {
+    const valid = await checkSessionValid()
+    if (!valid) {
+      await clearSessionCookie()
+      router.push(`/${tenant.slug}/login`)
+    }
+    return !valid
+  }
+
+  // Background check — catches the case where someone leaves the dashboard open
+  // without clicking anything for a while.
+  useEffect(() => {
+    const interval = setInterval(() => {
+      bounceIfKickedOut()
+    }, 15000)
+    return () => clearInterval(interval)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  async function navigate(s: Section, customer?: Customer) {
+    const kickedOut = await bounceIfKickedOut()
+    if (kickedOut) return
     if (s === 'print' && customer) setPrintDefaultCustomer(customer)
     else if (s !== 'print') setPrintDefaultCustomer(undefined)
     setSection(s)

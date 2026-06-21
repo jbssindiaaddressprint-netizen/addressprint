@@ -77,9 +77,7 @@ export default function DashboardShell({ tenant, initialCustomers, initialTransp
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  async function navigate(s: Section, customer?: Customer) {
-    const kickedOut = await bounceIfKickedOut()
-    if (kickedOut) return
+  function navigate(s: Section, customer?: Customer) {
     if (s === 'print' && customer) setPrintDefaultCustomer(customer)
     else if (s !== 'print') setPrintDefaultCustomer(undefined)
     setSection(s)

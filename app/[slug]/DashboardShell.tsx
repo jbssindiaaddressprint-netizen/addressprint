@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Image from 'next/image'
 import type { Tenant, Customer, Transporter } from './types'
@@ -12,6 +12,10 @@ import PrintSection from './sections/PrintSection'
 import ProfileSection from './sections/ProfileSection'
 
 export type Section = 'dashboard' | 'customers' | 'transporters' | 'print' | 'profile'
+
+// Auto-logout after this long with zero clicks/keys/scrolling — framed to customers
+// as a data-safety measure, not just a technical session limit.
+const IDLE_TIMEOUT_MS = 15 * 60 * 1000
 
 interface Props {
   tenant: Tenant
@@ -59,31 +63,55 @@ export default function DashboardShell({ tenant, initialCustomers, initialTransp
     router.push(`/${tenant.slug}/login`)
   }
 
-  async function bounceIfKickedOut(): Promise<boolean> {
-    const valid = await checkSessionValid()
-    if (!valid) {
+  const lastActivityRef = useRef<number>(0)
+
+  async function bounceToLogin(reason: 'kicked' | 'idle') {
+    if (reason === 'idle') {
+      // Real logout — also nulls the DB token, since nobody else has taken over this session.
+      await logout()
+    } else {
+      // Cookie only — the DB token now belongs to whichever login kicked this one out.
       await clearSessionCookie()
-      router.push(`/${tenant.slug}/login`)
     }
-    return !valid
+    router.push(`/${tenant.slug}/login?reason=${reason}`)
   }
 
-  // Background check — catches the case where someone leaves the dashboard open
-  // without clicking anything for a while. Also re-checks the instant the tab
-  // becomes visible/focused again, since browsers throttle timers in background
-  // tabs and a fixed interval alone can be unreliable for "switched away and back".
+  async function runPeriodicCheck() {
+    if (Date.now() - lastActivityRef.current >= IDLE_TIMEOUT_MS) {
+      await bounceToLogin('idle')
+      return
+    }
+    const valid = await checkSessionValid()
+    if (!valid) await bounceToLogin('kicked')
+  }
+
+  // Background check — catches both (a) someone leaves the dashboard open
+  // without touching it for 15+ minutes (auto-logout for data safety), and
+  // (b) this session got kicked out by a login elsewhere. Also re-checks the
+  // instant the tab becomes visible/focused again, since browsers throttle
+  // timers in background tabs and a fixed interval alone can be unreliable
+  // for "switched away and back".
   useEffect(() => {
+    lastActivityRef.current = Date.now()
+
+    function markActive() {
+      lastActivityRef.current = Date.now()
+    }
+    const activityEvents: (keyof WindowEventMap)[] = ['mousedown', 'keydown', 'touchstart', 'scroll']
+    activityEvents.forEach((evt) => window.addEventListener(evt, markActive, { passive: true }))
+
     const interval = setInterval(() => {
-      bounceIfKickedOut()
+      runPeriodicCheck()
     }, 15000)
 
     function handleVisible() {
-      if (document.visibilityState === 'visible') bounceIfKickedOut()
+      if (document.visibilityState === 'visible') runPeriodicCheck()
     }
     document.addEventListener('visibilitychange', handleVisible)
     window.addEventListener('focus', handleVisible)
 
     return () => {
+      activityEvents.forEach((evt) => window.removeEventListener(evt, markActive))
       clearInterval(interval)
       document.removeEventListener('visibilitychange', handleVisible)
       window.removeEventListener('focus', handleVisible)

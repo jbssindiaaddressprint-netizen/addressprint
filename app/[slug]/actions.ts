@@ -27,6 +27,26 @@ export async function addCustomer(
   tenantId: string,
   input: CustomerInput
 ): Promise<ActionResult<Customer>> {
+  const { data: tenant } = await supabaseAdmin
+    .from('tenants')
+    .select('customer_limit')
+    .eq('id', tenantId)
+    .single()
+
+  const limit = tenant?.customer_limit ?? 1000
+
+  const { count } = await supabaseAdmin
+    .from('customers')
+    .select('id', { count: 'exact', head: true })
+    .eq('tenant_id', tenantId)
+
+  if (count !== null && count >= limit) {
+    return {
+      success: false,
+      error: `You've reached your plan's limit of ${limit} customers. Contact JBSS support to add more.`,
+    }
+  }
+
   const { data, error } = await supabaseAdmin
     .from('customers')
     .insert({ tenant_id: tenantId, ...input })

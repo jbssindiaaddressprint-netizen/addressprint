@@ -51,6 +51,7 @@ export default function DashboardShell({ tenant, initialCustomers, initialTransp
   const [tenantData, setTenantData] = useState<Tenant>(tenant)
   const [printDefaultCustomer, setPrintDefaultCustomer] = useState<Customer | undefined>()
   const [loggingOut, setLoggingOut] = useState(false)
+  const [mobileNavOpen, setMobileNavOpen] = useState(false)
 
   async function handleLogout() {
     setLoggingOut(true)
@@ -121,6 +122,15 @@ export default function DashboardShell({ tenant, initialCustomers, initialTransp
       {/* Navbar */}
       <header className="flex h-14 shrink-0 items-center justify-between bg-[#0F172A] px-5 shadow-md z-20">
         <div className="flex items-center gap-3">
+          <button
+            onClick={() => setMobileNavOpen((v) => !v)}
+            className="-ml-1.5 flex h-9 w-9 items-center justify-center rounded-lg text-slate-300 hover:bg-white/5 md:hidden"
+            aria-label="Toggle menu"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+              <path fillRule="evenodd" d="M3 5a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 5a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 5a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1z" clipRule="evenodd" />
+            </svg>
+          </button>
           <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#0F766E]">
             <svg viewBox="0 0 24 24" fill="currentColor" className="h-4 w-4 text-white">
               <path d="M13 2L3 14h8.5l-1.5 8L20 10h-8.5L13 2z" />
@@ -155,14 +165,26 @@ export default function DashboardShell({ tenant, initialCustomers, initialTransp
       </header>
 
       {/* Body */}
-      <div className="flex flex-1 overflow-hidden">
-        {/* Sidebar */}
-        <aside className="flex w-[174px] shrink-0 flex-col border-r border-slate-200 bg-white">
+      <div className="flex flex-1 overflow-hidden relative">
+        {/* Backdrop — mobile only, shown while the drawer is open */}
+        {mobileNavOpen && (
+          <div
+            onClick={() => setMobileNavOpen(false)}
+            className="fixed inset-0 top-14 z-20 bg-black/40 md:hidden"
+          />
+        )}
+
+        {/* Sidebar — slide-in drawer on mobile, static column on desktop */}
+        <aside
+          className={`fixed inset-y-0 left-0 top-14 z-30 flex w-[200px] -translate-x-full flex-col border-r border-slate-200 bg-white transition-transform duration-200 ease-in-out md:static md:top-0 md:z-auto md:w-[174px] md:translate-x-0 md:shrink-0 ${
+            mobileNavOpen ? 'translate-x-0' : ''
+          }`}
+        >
           <nav className="flex-1 overflow-y-auto py-2">
             {NAV.map(item => (
               <button
                 key={item.id}
-                onClick={() => navigate(item.id)}
+                onClick={() => { navigate(item.id); setMobileNavOpen(false) }}
                 className={`flex w-full items-center gap-2.5 px-4 py-2.5 text-left text-[13px] font-medium transition-colors ${
                   section === item.id
                     ? 'border-r-[3px] border-[#0F766E] bg-[#f0fdf9] text-[#0F766E]'

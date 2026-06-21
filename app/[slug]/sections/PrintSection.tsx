@@ -197,15 +197,15 @@ export function buildPrintHTML(
 
     ${isEnv ? `
       /* ENVELOPES: TO block stays right-aligned (matches envelope window).
-         FROM block now sits on the LEFT side, roughly level with TO - not stacked below it. */
+         FROM block sits on the LEFT side, pinned to the BOTTOM (not centered). */
       .middle { justify-content: center; max-height: 100%; overflow: hidden; }
       .middle-inner { margin-left: 55%; width: calc(45% - ${sp.padMm}mm); gap: ${sp.lineGapPt}pt; max-height: 100%; overflow: hidden; }
       
       .bottom {
-        position: absolute; left: ${sp.padMm}mm; top: 50%; transform: translateY(-50%);
+        position: absolute; left: ${sp.padMm}mm; bottom: ${sp.padMm}mm;
         width: calc(50% - ${sp.padMm * 2}mm);
         border-top: none; padding-top: 0; margin-top: 0;
-        display: flex; flex-direction: column; justify-content: center;
+        display: flex; flex-direction: column; justify-content: flex-end;
         overflow: hidden;
       }
     ` : `
@@ -427,7 +427,7 @@ export default function PrintSection({ tenant, customers, transporters, defaultC
   ) : null
 
   const pvFromEnv = showFrom ? (
-    <div style={{ position: 'absolute', left: sp.padMm * MM, top: '50%', transform: 'translateY(-50%)', width: `calc(50% - ${sp.padMm * 2 * MM}px)`, display: 'flex', flexDirection: 'column', justifyContent: 'center', overflow: 'hidden' }}>
+    <div style={{ position: 'absolute', left: sp.padMm * MM, bottom: sp.padMm * MM, width: `calc(50% - ${sp.padMm * 2 * MM}px)`, display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', overflow: 'hidden' }}>
       {pvFromInner}
     </div>
   ) : null

@@ -1,8 +1,10 @@
 'use client'
 
 import { useState } from 'react'
+import { useRouter } from 'next/navigation'
 import Image from 'next/image'
 import type { Tenant, Customer, Transporter } from './types'
+import { logout } from './actions'
 import DashboardSection from './sections/DashboardSection'
 import CustomersSection from './sections/CustomersSection'
 import TransportersSection from './sections/TransportersSection'
@@ -42,11 +44,19 @@ const NAV: { id: Section; label: string; icon: React.ReactNode }[] = [
 ]
 
 export default function DashboardShell({ tenant, initialCustomers, initialTransporters, fontClassName }: Props) {
+  const router = useRouter()
   const [section, setSection] = useState<Section>('dashboard')
   const [customers, setCustomers] = useState<Customer[]>(initialCustomers)
   const [transporters, setTransporters] = useState<Transporter[]>(initialTransporters)
   const [tenantData, setTenantData] = useState<Tenant>(tenant)
   const [printDefaultCustomer, setPrintDefaultCustomer] = useState<Customer | undefined>()
+  const [loggingOut, setLoggingOut] = useState(false)
+
+  async function handleLogout() {
+    setLoggingOut(true)
+    await logout()
+    router.push(`/${tenant.slug}/login`)
+  }
 
   function navigate(s: Section, customer?: Customer) {
     if (s === 'print' && customer) setPrintDefaultCustomer(customer)
@@ -102,6 +112,13 @@ export default function DashboardShell({ tenant, initialCustomers, initialTransp
               {tenantData.name.charAt(0).toUpperCase()}
             </div>
           )}
+          <button
+            onClick={handleLogout}
+            disabled={loggingOut}
+            className="rounded-lg border border-slate-700 px-3 py-1.5 text-xs font-medium text-slate-300 transition hover:border-slate-500 hover:text-white disabled:opacity-50"
+          >
+            {loggingOut ? 'Logging out…' : 'Logout'}
+          </button>
         </div>
       </header>
 

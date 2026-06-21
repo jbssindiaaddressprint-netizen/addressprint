@@ -1,6 +1,8 @@
 'use server'
 
+import { cookies } from 'next/headers'
 import { supabaseAdmin } from '@/lib/supabase'
+import { SESSION_COOKIE, decodeSession } from '@/lib/session'
 import type { Customer, Transporter, ContactPerson, ActionResult } from './types'
 
 type CustomerInput = {
@@ -118,5 +120,21 @@ export async function updateExtraPhones(
     .update({ extra_phones: phones.filter(Boolean) })
     .eq('id', tenantId)
   if (error) return { success: false, error: error.message }
+  return { success: true, data: undefined }
+}
+
+export async function logout(): Promise<ActionResult> {
+  const cookieStore = await cookies()
+  const session = decodeSession(cookieStore.get(SESSION_COOKIE)?.value)
+
+  if (session) {
+    // Invalidate the ticket server-side too, not just on this browser.
+    await supabaseAdmin
+      .from('tenant_logins')
+      .update({ session_token: null })
+      .eq('id', session.loginId)
+  }
+
+  cookieStore.delete(SESSION_COOKIE)
   return { success: true, data: undefined }
 }

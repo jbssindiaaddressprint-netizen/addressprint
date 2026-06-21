@@ -196,15 +196,16 @@ export function buildPrintHTML(
     }
 
     ${isEnv ? `
-      /* ENVELOPES: TO block and FROM block both shifted right to match envelope window position */
-      .middle { justify-content: center; max-height: calc(100% - ${sp.fromReserveMm}mm); overflow: hidden; }
+      /* ENVELOPES: TO block stays right-aligned (matches envelope window).
+         FROM block now sits on the LEFT side, roughly level with TO - not stacked below it. */
+      .middle { justify-content: center; max-height: 100%; overflow: hidden; }
       .middle-inner { margin-left: 55%; width: calc(45% - ${sp.padMm}mm); gap: ${sp.lineGapPt}pt; max-height: 100%; overflow: hidden; }
       
       .bottom {
-        position: absolute; left: 55%; bottom: ${sp.padMm}mm; width: calc(45% - ${sp.padMm}mm);
-        height: ${sp.fromReserveMm - sp.padMm}mm;
+        position: absolute; left: ${sp.padMm}mm; top: 50%; transform: translateY(-50%);
+        width: calc(50% - ${sp.padMm * 2}mm);
         border-top: none; padding-top: 0; margin-top: 0;
-        display: flex; flex-direction: column; justify-content: flex-end;
+        display: flex; flex-direction: column; justify-content: center;
         overflow: hidden;
       }
     ` : `
@@ -227,7 +228,7 @@ export function buildPrintHTML(
         ${careHtml}
         <div>
           <div style="font-size: ${sp.toPt}pt; font-weight: 800; text-decoration: underline;">To:</div>
-          <div style="font-size: ${sp.coPt}pt; font-weight: 900; line-height: 1.05; word-break: break-word; margin-top: 4pt;">${customerName}</div>
+          <div style="font-size: ${sp.coPt}pt; font-weight: 900; line-height: 1.05; word-break: break-word; margin-top: 4pt; color: ${bodyColor};">${customerName}</div>
         </div>
         <div style="font-size: ${sp.adPt}pt; line-height: 1.4; white-space: pre-wrap; color: ${bodyColor};">${customerAddress}</div>
         ${customerPinState ? `<div style="font-size: ${sp.adPt}pt; color: ${inkSaver ? '#666' : '#333'};">${customerPinState}</div>` : ''}
@@ -241,7 +242,7 @@ export function buildPrintHTML(
       <div style="display: flex; align-items: flex-start; gap: 2.5mm;">
         ${bottomLogo}
         <div style="flex: 1; font-size: ${sp.fAdPt}pt; line-height: 1.4; color: ${bodyColor};">
-          <div style="font-size: ${sp.fNmPt}pt; font-weight: 800; margin-bottom: 0.5mm; color: #000;">${esc(tenant?.name || '')}</div>
+          <div style="font-size: ${sp.fNmPt}pt; font-weight: 800; margin-bottom: 0.5mm; color: ${bodyColor};">${esc(tenant?.name || '')}</div>
           <div>${esc(bottomAddress)}</div>
           <div>Ph: ${esc(bottomPhones)}</div>
         </div>
@@ -391,7 +392,7 @@ export default function PrintSection({ tenant, customers, transporters, defaultC
       {pvCareRow}
       <div>
         <div style={{ fontSize: sp.toPt * PT, fontWeight: 800, textDecoration: 'underline' }}>To:</div>
-        <div style={{ fontSize: sp.coPt * PT, fontWeight: 900, lineHeight: 1.05, wordBreak: 'break-word', marginTop: 4 * PT }}>{customer.company_name}</div>
+        <div style={{ fontSize: sp.coPt * PT, fontWeight: 900, lineHeight: 1.05, wordBreak: 'break-word', marginTop: 4 * PT, color: inkSaver ? '#555' : '#000' }}>{customer.company_name}</div>
       </div>
       <div style={{ fontSize: sp.adPt * PT, lineHeight: 1.4, whiteSpace: 'pre-wrap', color: inkSaver ? '#555' : '#000' }}>{customer.address}</div>
       {customerPinState && <div style={{ fontSize: sp.adPt * PT, color: inkSaver ? '#666' : '#333' }}>{customerPinState}</div>}
@@ -411,7 +412,7 @@ export default function PrintSection({ tenant, customers, transporters, defaultC
         <img src={tenant.logo_url} alt="" style={{ maxHeight: sp.logoMm * MM, maxWidth: 28 * MM, objectFit: 'contain', flexShrink: 0 }} />
       )}
       <div style={{ flex: 1, fontSize: sp.fAdPt * PT, lineHeight: 1.4, color: inkSaver ? '#555' : '#000' }}>
-        <div style={{ fontSize: sp.fNmPt * PT, fontWeight: 800, marginBottom: 0.5 * MM, color: '#000' }}>{tenant.name}</div>
+        <div style={{ fontSize: sp.fNmPt * PT, fontWeight: 800, marginBottom: 0.5 * MM, color: inkSaver ? '#555' : '#000' }}>{tenant.name}</div>
         <div>{[tenant.address, tenant.pin, tenant.state].filter(Boolean).join(', ')}</div>
         <div>Ph: {phones.join(' / ')}</div>
       </div>
@@ -426,7 +427,7 @@ export default function PrintSection({ tenant, customers, transporters, defaultC
   ) : null
 
   const pvFromEnv = showFrom ? (
-    <div style={{ position: 'absolute', left: '55%', bottom: sp.padMm * MM, width: `calc(45% - ${sp.padMm * MM}px)`, height: (sp.fromReserveMm - sp.padMm) * MM, display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', overflow: 'hidden' }}>
+    <div style={{ position: 'absolute', left: sp.padMm * MM, top: '50%', transform: 'translateY(-50%)', width: `calc(50% - ${sp.padMm * 2 * MM}px)`, display: 'flex', flexDirection: 'column', justifyContent: 'center', overflow: 'hidden' }}>
       {pvFromInner}
     </div>
   ) : null
@@ -578,7 +579,7 @@ export default function PrintSection({ tenant, customers, transporters, defaultC
               position: 'relative',
             }}>
               {pvTBar}
-              <div style={{ flexGrow: 1, display: 'flex', flexDirection: 'column', ...(isEnv ? { justifyContent: 'center', maxHeight: `calc(100% - ${sp.fromReserveMm}mm)`, overflow: 'hidden' } : { justifyContent: 'space-evenly', paddingTop: '5mm', paddingBottom: '5mm' }), minHeight: 0 }}>
+              <div style={{ flexGrow: 1, display: 'flex', flexDirection: 'column', ...(isEnv ? { justifyContent: 'center', maxHeight: '100%', overflow: 'hidden' } : { justifyContent: 'space-evenly', paddingTop: '5mm', paddingBottom: '5mm' }), minHeight: 0 }}>
                 {pvToBlock}
               </div>
               {isEnv ? pvFromEnv : pvFromPortrait}

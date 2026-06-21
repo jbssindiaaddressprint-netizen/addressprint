@@ -176,11 +176,12 @@ export function buildPrintHTML(
       -webkit-print-color-adjust: exact; print-color-adjust: exact; 
     }
     .sheet { 
-      /* FIX: 'fixed' broke rendering entirely in some print/PDF engines (confirmed via isolated test).
-         'absolute' + top:0;left:0 keeps the same top-left pin (so content doesn't get
-         auto-centered if a printer ignores our custom @page size) without that blank-page risk. */
       position: absolute;
-      top: 0; left: 0;
+      top: 0; 
+      /* KEY FIX: If it's an envelope, pin it to the RIGHT side of the browser's print canvas 
+         so it perfectly aligns with the right-aligned physical feed tray of the printer! */
+      ${isEnv ? 'right: 0; left: auto;' : 'left: 0; right: auto;'}
+      
       width: ${pw}mm !important; height: ${ph}mm !important; 
       padding: ${sp.padMm}mm; 
       display: flex; flex-direction: column; box-sizing: border-box; overflow: hidden;

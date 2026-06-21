@@ -175,9 +175,9 @@ export function buildPrintHTML(
       -webkit-print-color-adjust: exact; print-color-adjust: exact; 
     }
     .sheet { 
-      /* KEY FIX: 'fixed' completely disables browser auto-centering. Locks to top-left corner. */
-      position: fixed;
-      top: 0; left: 0;
+      /* FIX: 'fixed' broke rendering entirely in some print/PDF engines (confirmed via isolated test).
+         'relative' + exact @page size achieves the same top-left lock without that risk. */
+      position: relative;
       width: ${pw}mm !important; height: ${ph}mm !important; 
       padding: ${sp.padMm}mm; 
       display: flex; flex-direction: column; box-sizing: border-box; overflow: hidden;

@@ -244,6 +244,7 @@ export default function DashboardShell({ tenant, initialCustomers, initialTransp
           {section === 'customers' && (
             <CustomersSection
               tenantId={tenant.id}
+              tenantName={tenantData.name}
               customers={customers}
               onAdded={onCustomerAdded}
               onUpdated={onCustomerUpdated}

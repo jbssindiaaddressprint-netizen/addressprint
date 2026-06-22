@@ -7,6 +7,7 @@ import type { Customer, ContactPerson } from '../types'
 
 interface Props {
   tenantId: string
+  tenantName: string
   customers: Customer[]
   onAdded: (c: Customer) => void
   onUpdated: (c: Customer) => void
@@ -25,7 +26,7 @@ function defaultContact(c: Customer) {
 const inputCls = 'w-full rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-800 placeholder-slate-400 outline-none transition focus:border-[#14B8A6] focus:ring-2 focus:ring-[#14B8A6]/20'
 const labelCls = 'block text-xs font-medium text-slate-600 mb-1'
 
-export default function CustomersSection({ tenantId, customers, onAdded, onUpdated, onDeleted, onPrintCustomer }: Props) {
+export default function CustomersSection({ tenantId, tenantName, customers, onAdded, onUpdated, onDeleted, onPrintCustomer }: Props) {
   const [query, setQuery] = useState('')
   const [modal, setModal] = useState<ModalMode | null>(null)
   const [deleteId, setDeleteId] = useState<string | null>(null)
@@ -46,6 +47,35 @@ export default function CustomersSection({ tenantId, customers, onAdded, onUpdat
       c.pin.includes(q)
     )
   }, [customers, query])
+
+  function csvEscape(val: string | null | undefined) {
+    const s = val == null ? '' : String(val)
+    if (/[",\n]/.test(s)) return '"' + s.replace(/"/g, '""') + '"'
+    return s
+  }
+
+  function handleExport() {
+    const headers = ['Company Name', 'Address', 'PIN Code', 'State', 'Country', 'Default Contact Name', 'Default Contact Phone', 'All Contacts']
+    const rows = customers.map(c => {
+      const dc = defaultContact(c)
+      const allContacts = (c.contacts || [])
+        .map(ct => `${ct.name || '-'} - ${ct.phone || '-'}${ct.is_default ? ' (Default)' : ''}`)
+        .join('; ')
+      return [c.company_name, c.address, c.pin, c.state, c.country, dc?.name || '', dc?.phone || '', allContacts]
+    })
+    const csvBody = [headers, ...rows].map(row => row.map(csvEscape).join(',')).join('\r\n')
+    const blob = new Blob(['\uFEFF' + csvBody], { type: 'text/csv;charset=utf-8;' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    const safeName = (tenantName || 'AddressPrint').replace(/[^a-zA-Z0-9]+/g, '_')
+    const dateStr = new Date().toISOString().slice(0, 10)
+    a.href = url
+    a.download = `${safeName}_Customers_${dateStr}.csv`
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    URL.revokeObjectURL(url)
+  }
 
   function openAdd() {
     setContacts([{ ...EMPTY_CONTACT }])
@@ -146,13 +176,24 @@ export default function CustomersSection({ tenantId, customers, onAdded, onUpdat
             className="w-full rounded-lg border border-slate-200 bg-white py-2 pl-9 pr-3 text-sm outline-none focus:border-[#14B8A6] focus:ring-2 focus:ring-[#14B8A6]/20"
           />
         </div>
-        <button
-          onClick={openAdd}
-          className="flex items-center gap-2 rounded-lg bg-[#0F766E] px-4 py-2 text-sm font-semibold text-white hover:bg-[#0d6b63] transition"
-        >
-          <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z" clipRule="evenodd" /></svg>
-          Add Customer
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={handleExport}
+            disabled={customers.length === 0}
+            title={customers.length === 0 ? 'No customers to export' : 'Download all customers as a spreadsheet'}
+            className="flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-50 transition disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm6.293-12.707a1 1 0 011.414 0l3 3a1 1 0 01-1.414 1.414L11 7.414V13a1 1 0 11-2 0V7.414L7.707 8.707a1 1 0 01-1.414-1.414l3-3z" clipRule="evenodd" /></svg>
+            Export
+          </button>
+          <button
+            onClick={openAdd}
+            className="flex items-center gap-2 rounded-lg bg-[#0F766E] px-4 py-2 text-sm font-semibold text-white hover:bg-[#0d6b63] transition"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z" clipRule="evenodd" /></svg>
+            Add Customer
+          </button>
+        </div>
       </div>
 
       {/* Table */}

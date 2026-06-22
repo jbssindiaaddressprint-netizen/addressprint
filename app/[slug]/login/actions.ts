@@ -24,11 +24,14 @@ export async function loginTenant(
 
   const { data: tenant } = await supabaseAdmin
     .from('tenants')
-    .select('id')
+    .select('id, is_active')
     .eq('slug', slug)
     .single()
 
   if (!tenant) return { status: 'error', error: 'Account not found.' }
+  if (tenant.is_active === false) {
+    return { status: 'error', error: 'This account has been deactivated. Please contact JBSS support.' }
+  }
 
   const { data: logins } = await supabaseAdmin
     .from('tenant_logins')

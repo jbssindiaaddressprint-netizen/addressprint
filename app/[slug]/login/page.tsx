@@ -13,6 +13,7 @@ type Props = {
 const REASON_MESSAGES: Record<string, string> = {
   idle: 'You were logged out after 15 minutes of inactivity, to keep your data safe.',
   kicked: 'You were logged out because this account was logged in on another device.',
+  inactive: 'This account has been deactivated. Please contact JBSS support.',
 }
 
 export default async function LoginPage({ params, searchParams }: Props) {

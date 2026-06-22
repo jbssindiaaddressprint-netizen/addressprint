@@ -2,6 +2,7 @@
 
 import bcrypt from 'bcryptjs'
 import { supabaseAdmin } from '@/lib/supabase'
+import { sendBrevoEmail } from '@/lib/brevo'
 
 export type OnboardState = {
   status: 'idle' | 'success' | 'error'
@@ -122,6 +123,26 @@ export async function onboardTenant(
     // Roll back the tenant row so we don't leave a login-less account behind
     await supabaseAdmin.from('tenants').delete().eq('id', newTenant.id)
     return { status: 'error', error: 'Could not set up your login. Please try again.' }
+  }
+
+  // Best-effort welcome email — signup still succeeds even if this fails.
+  try {
+    await sendBrevoEmail(
+      email,
+      'Welcome to AddressPrint!',
+      `<div style="font-family: sans-serif; max-width: 480px;">
+        <p>Hi ${companyName},</p>
+        <p>Your AddressPrint account is ready! You can log in and start printing address labels right away:</p>
+        <p style="margin: 16px 0;">
+          <a href="https://addressprint.vercel.app/${slug}" style="background:#0F766E;color:#fff;padding:10px 20px;border-radius:8px;text-decoration:none;">Open AddressPrint</a>
+        </p>
+        <p>Your dashboard URL: <strong>addressprint.vercel.app/${slug}</strong></p>
+        <p>If you ever need help, reach us at support@jbssindia.com.</p>
+        <p style="color: #888; font-size: 12px; margin-top: 24px;">JBSS AddressPrint &middot; support@jbssindia.com</p>
+      </div>`
+    )
+  } catch {
+    // Ignore email failures — account creation has already succeeded.
   }
 
   return { status: 'success', slug }

@@ -1,7 +1,7 @@
 'use client'
 
 import { useMemo, useState, useTransition } from 'react'
-import { setTenantActive, updateTenantCaps } from './actions'
+import { setTenantActive, updateTenantCaps, updateTenantEmail } from './actions'
 import { logoutAdmin } from './login/actions'
 import type { AdminTenant } from './types'
 
@@ -14,6 +14,7 @@ export default function AdminPanel({ tenants, customerCounts }: Props) {
   const [query, setQuery] = useState('')
   const [isPending, startTransition] = useTransition()
   const [editing, setEditing] = useState<Record<string, { customerLimit: string; paidLogins: string }>>({})
+  const [editingEmail, setEditingEmail] = useState<Record<string, string>>({})
   const [rowError, setRowError] = useState<Record<string, string>>({})
   const [savedFlash, setSavedFlash] = useState<Record<string, boolean>>({})
 
@@ -53,6 +54,34 @@ export default function AdminPanel({ tenants, customerCounts }: Props) {
       const r = await updateTenantCaps(id, customerLimit, paidLogins)
       if (r.success) {
         cancelEdit(id)
+        setSavedFlash(prev => ({ ...prev, [id]: true }))
+        setTimeout(() => setSavedFlash(prev => ({ ...prev, [id]: false })), 2000)
+      } else {
+        setRowError(prev => ({ ...prev, [id]: r.error }))
+      }
+    })
+  }
+
+  function startEditEmail(t: AdminTenant) {
+    setEditingEmail(prev => ({ ...prev, [t.id]: t.email ?? '' }))
+  }
+
+  function cancelEditEmail(id: string) {
+    setEditingEmail(prev => {
+      const next = { ...prev }
+      delete next[id]
+      return next
+    })
+    setRowError(prev => ({ ...prev, [id]: '' }))
+  }
+
+  function saveEmail(id: string) {
+    const value = editingEmail[id]
+    if (value === undefined) return
+    startTransition(async () => {
+      const r = await updateTenantEmail(id, value)
+      if (r.success) {
+        cancelEditEmail(id)
         setSavedFlash(prev => ({ ...prev, [id]: true }))
         setTimeout(() => setSavedFlash(prev => ({ ...prev, [id]: false })), 2000)
       } else {
@@ -137,8 +166,35 @@ export default function AdminPanel({ tenants, customerCounts }: Props) {
                       </a>
                     </td>
                     <td className="px-4 py-3 text-slate-400">
-                      <p>{t.email || '—'}</p>
-                      <p className="text-xs">{t.phone}</p>
+                      {editingEmail[t.id] !== undefined ? (
+                        <div className="flex flex-col gap-1">
+                          <input
+                            value={editingEmail[t.id]}
+                            onChange={e => setEditingEmail(prev => ({ ...prev, [t.id]: e.target.value }))}
+                            placeholder="email@company.com"
+                            className="w-40 rounded-md border border-[#334155] bg-[#1E293B] px-2 py-1 text-xs text-white outline-none focus:ring-2 focus:ring-[#14B8A6]"
+                          />
+                          <div className="flex items-center gap-2">
+                            <button onClick={() => cancelEditEmail(t.id)} className="text-xs text-slate-500 hover:text-slate-300">Cancel</button>
+                            <button onClick={() => saveEmail(t.id)} disabled={isPending} className="text-xs font-semibold text-[#14B8A6] hover:underline">Save</button>
+                          </div>
+                          {rowError[t.id] && <p className="text-xs text-red-400">{rowError[t.id]}</p>}
+                        </div>
+                      ) : (
+                        <div className="group flex items-center gap-1.5">
+                          <div>
+                            <p>{t.email || <span className="italic text-slate-500">No email set</span>}</p>
+                            <p className="text-xs">{t.phone}</p>
+                          </div>
+                          <button
+                            onClick={() => startEditEmail(t)}
+                            className="text-xs text-slate-500 opacity-0 group-hover:opacity-100 hover:text-[#14B8A6] transition"
+                            title="Edit email"
+                          >
+                            ✎
+                          </button>
+                        </div>
+                      )}
                     </td>
                     <td className="px-4 py-3">
                       <button

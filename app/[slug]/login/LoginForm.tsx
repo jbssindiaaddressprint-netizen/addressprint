@@ -54,6 +54,10 @@ export default function LoginForm({ slug }: { slug: string }) {
       >
         {pending ? 'Logging in…' : 'Log In'}
       </button>
+
+      <a href={`/${slug}/forgot-password`} className="block text-center text-sm text-slate-400 hover:text-slate-300">
+        Forgot password?
+      </a>
     </form>
   )
 }

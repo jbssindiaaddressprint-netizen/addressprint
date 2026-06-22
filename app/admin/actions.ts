@@ -26,6 +26,24 @@ export async function setTenantActive(tenantId: string, isActive: boolean) {
   return { success: true as const }
 }
 
+export async function updateTenantEmail(tenantId: string, email: string) {
+  await assertAdmin()
+
+  const trimmed = email.trim().toLowerCase()
+  if (!trimmed || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed)) {
+    return { success: false as const, error: 'Please enter a valid email address.' }
+  }
+
+  const { error } = await supabaseAdmin
+    .from('tenants')
+    .update({ email: trimmed })
+    .eq('id', tenantId)
+
+  if (error) return { success: false as const, error: error.message }
+  revalidatePath('/admin')
+  return { success: true as const }
+}
+
 export async function updateTenantCaps(
   tenantId: string,
   customerLimit: number,

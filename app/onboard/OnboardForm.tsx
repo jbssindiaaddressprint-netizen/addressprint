@@ -221,6 +221,23 @@ export default function OnboardForm() {
         />
       </div>
 
+      {/* Email */}
+      <div>
+        <label htmlFor="email" className={labelCls}>Email Address <Required /></label>
+        <input
+          id="email"
+          name="email"
+          type="email"
+          required
+          disabled={locked}
+          placeholder="you@company.com"
+          className={inputNormal}
+        />
+        <p className="mt-1.5 text-xs text-slate-500">
+          We&apos;ll use this for password resets and important account updates.
+        </p>
+      </div>
+
       {/* Logo Upload */}
       <div>
         <label className={labelCls}>Company Logo <span className="text-slate-500 font-normal">(PNG or JPG, max 2 MB)</span></label>

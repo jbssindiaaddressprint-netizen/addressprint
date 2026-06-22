@@ -38,6 +38,7 @@ export type Tenant = {
   state: string
   country: string
   phone: string
+  email: string | null
   extra_phones: string[] | null
   prints_month: number
   prints_lifetime: number

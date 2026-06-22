@@ -48,6 +48,7 @@ export async function onboardTenant(
   const state = (formData.get('state') as string)?.trim()
   const country = ((formData.get('country') as string)?.trim()) || 'India'
   const phone = (formData.get('phone') as string)?.trim()
+  const email = (formData.get('email') as string)?.trim().toLowerCase()
   const password = (formData.get('password') as string) ?? ''
   const confirmPassword = (formData.get('confirmPassword') as string) ?? ''
   const logo = formData.get('logo') as File | null
@@ -57,6 +58,7 @@ export async function onboardTenant(
   if (!pin || !/^\d{6}$/.test(pin)) return { status: 'error', error: 'A valid 6-digit PIN code is required.' }
   if (!state) return { status: 'error', error: 'State is required.' }
   if (!phone) return { status: 'error', error: 'Phone number is required.' }
+  if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return { status: 'error', error: 'A valid email address is required.' }
   if (!password || password.length < 6) return { status: 'error', error: 'Password must be at least 6 characters.' }
   if (password !== confirmPassword) return { status: 'error', error: 'Passwords do not match.' }
 
@@ -99,6 +101,7 @@ export async function onboardTenant(
       state,
       country,
       phone,
+      email,
       slug,
       logo_url: logoUrl,
     })

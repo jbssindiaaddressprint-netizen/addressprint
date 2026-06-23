@@ -39,7 +39,7 @@ export async function middleware(request: NextRequest) {
 
   // Confirm the slug in the URL actually belongs to the tenant recorded in the cookie.
   const tenantRes = await fetch(
-    `${supabaseUrl}/rest/v1/tenants?slug=eq.${encodeURIComponent(slug)}&select=id,is_active,subscription_status,trial_ends_at`,
+    `${supabaseUrl}/rest/v1/tenants?slug=eq.${encodeURIComponent(slug)}&select=id,is_active,subscription_status,trial_ends_at,current_period_end`,
     { headers }
   )
   const tenantRows = (await tenantRes.json()) as {
@@ -47,6 +47,7 @@ export async function middleware(request: NextRequest) {
     is_active: boolean
     subscription_status: string | null
     trial_ends_at: string | null
+    current_period_end: string | null
   }[]
   const tenantRow = tenantRows?.[0]
   const tenantId = tenantRow?.id
@@ -57,15 +58,22 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(new URL(`/${slug}/login?reason=inactive`, request.url))
   }
 
-  // Trial expiry gate. Tenants with no trial_ends_at set (all pre-existing accounts,
-  // until manually moved onto a plan) are never blocked here. Only accounts still in
-  // "trial" status whose trial date has passed get redirected to the subscribe page —
-  // their session stays intact so they don't need to log in again after paying.
-  if (
+  // Billing gate. Tenants with no trial_ends_at set (all pre-existing accounts, until
+  // manually moved onto a plan) are never blocked by the trial check below. Their
+  // session stays intact through any redirect, so no one needs to log in again after paying.
+  const trialExpired =
     tenantRow.subscription_status === 'trial' &&
-    tenantRow.trial_ends_at &&
+    !!tenantRow.trial_ends_at &&
     new Date(tenantRow.trial_ends_at) < new Date()
-  ) {
+
+  const subscriptionLapsed =
+    tenantRow.subscription_status === 'active' &&
+    !!tenantRow.current_period_end &&
+    new Date(tenantRow.current_period_end) < new Date()
+
+  const subscriptionCancelled = tenantRow.subscription_status === 'cancelled'
+
+  if (trialExpired || subscriptionLapsed || subscriptionCancelled) {
     return NextResponse.redirect(new URL(`/${slug}/subscribe`, request.url))
   }
 

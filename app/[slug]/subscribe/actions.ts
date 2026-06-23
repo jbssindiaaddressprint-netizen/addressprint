@@ -78,10 +78,19 @@ export async function startSubscription(
 
   // Record the subscription id right away so the webhook (built next) can find this
   // tenant when the payment completes. Status stays "trial" until that webhook confirms.
-  await supabaseAdmin
+  const { error: updateError } = await supabaseAdmin
     .from('tenants')
     .update({ razorpay_subscription_id: data.id })
     .eq('id', tenant.id)
+
+  if (updateError) {
+    // Don't send the tenant to pay if we can't even record which subscription is
+    // theirs — the webhook would have no way to find them afterward.
+    return {
+      status: 'error',
+      error: 'Something went wrong saving your subscription. Please contact JBSS support before trying again — do not complete payment yet.',
+    }
+  }
 
   return { status: 'redirecting', url: data.short_url }
 }

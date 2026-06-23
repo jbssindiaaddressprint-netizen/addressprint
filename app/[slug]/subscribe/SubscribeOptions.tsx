@@ -1,6 +1,6 @@
 'use client'
 
-import { useActionState, useEffect } from 'react'
+import { useActionState, useEffect, useState } from 'react'
 import { startSubscription, type SubscribeState } from './actions'
 
 const initialState: SubscribeState = { status: 'idle' }
@@ -14,6 +14,7 @@ const PLANS: { key: string; label: string; price: string; sub: string }[] = [
 
 export default function SubscribeOptions({ slug }: { slug: string }) {
   const [state, formAction, pending] = useActionState(startSubscription, initialState)
+  const [coupon, setCoupon] = useState('')
 
   useEffect(() => {
     if (state.status === 'redirecting' && state.url) {
@@ -23,10 +24,22 @@ export default function SubscribeOptions({ slug }: { slug: string }) {
 
   return (
     <div className="mt-8 grid w-full max-w-md gap-3">
+      <div className="mb-1">
+        <input
+          type="text"
+          value={coupon}
+          onChange={(e) => setCoupon(e.target.value)}
+          placeholder="Have a coupon code? (optional)"
+          disabled={pending}
+          className="w-full rounded-xl border border-[#334155] bg-[#1E293B] px-4 py-2.5 text-center text-sm text-white placeholder-slate-500 outline-none transition focus:ring-2 focus:ring-[#14B8A6] disabled:cursor-not-allowed disabled:opacity-50"
+        />
+      </div>
+
       {PLANS.map((plan) => (
         <form action={formAction} key={plan.key}>
           <input type="hidden" name="slug" value={slug} />
           <input type="hidden" name="planKey" value={plan.key} />
+          <input type="hidden" name="couponCode" value={coupon} />
           <button
             type="submit"
             disabled={pending}

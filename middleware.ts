@@ -39,10 +39,15 @@ export async function middleware(request: NextRequest) {
 
   // Confirm the slug in the URL actually belongs to the tenant recorded in the cookie.
   const tenantRes = await fetch(
-    `${supabaseUrl}/rest/v1/tenants?slug=eq.${encodeURIComponent(slug)}&select=id,is_active`,
+    `${supabaseUrl}/rest/v1/tenants?slug=eq.${encodeURIComponent(slug)}&select=id,is_active,subscription_status,trial_ends_at`,
     { headers }
   )
-  const tenantRows = (await tenantRes.json()) as { id: string; is_active: boolean }[]
+  const tenantRows = (await tenantRes.json()) as {
+    id: string
+    is_active: boolean
+    subscription_status: string | null
+    trial_ends_at: string | null
+  }[]
   const tenantRow = tenantRows?.[0]
   const tenantId = tenantRow?.id
   if (!tenantId || tenantId !== session.tenantId) return NextResponse.redirect(loginUrl)
@@ -50,6 +55,18 @@ export async function middleware(request: NextRequest) {
   // An admin-deactivated tenant gets logged out immediately, even mid-session.
   if (tenantRow.is_active === false) {
     return NextResponse.redirect(new URL(`/${slug}/login?reason=inactive`, request.url))
+  }
+
+  // Trial expiry gate. Tenants with no trial_ends_at set (all pre-existing accounts,
+  // until manually moved onto a plan) are never blocked here. Only accounts still in
+  // "trial" status whose trial date has passed get redirected to the subscribe page —
+  // their session stays intact so they don't need to log in again after paying.
+  if (
+    tenantRow.subscription_status === 'trial' &&
+    tenantRow.trial_ends_at &&
+    new Date(tenantRow.trial_ends_at) < new Date()
+  ) {
+    return NextResponse.redirect(new URL(`/${slug}/subscribe`, request.url))
   }
 
   // Confirm the session ticket still matches what's stored in the database.

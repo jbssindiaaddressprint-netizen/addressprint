@@ -104,7 +104,7 @@ async function runTrialEndedNotices() {
 
   const { data: tenants, error } = await supabaseAdmin
     .from('tenants')
-    .select('id, name, email, phone')
+    .select('id, name, email, phone, trial_ends_at')
     .eq('subscription_status', 'trial')
     .is('trial_ended_notified_at', null)
     .not('trial_ends_at', 'is', null)
@@ -134,7 +134,10 @@ async function runTrialEndedNotices() {
     if (!emailResult.success) console.error(`Trial-ended email failed for ${tenant.id}:`, emailResult.error)
 
     if (tenant.phone) {
-      whatsappResult = await sendWhatsAppTemplate(tenant.phone, 'ap_trial_ended', [tenant.name ?? 'there'])
+      const trialEndDateText = tenant.trial_ends_at
+        ? new Date(tenant.trial_ends_at as string).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })
+        : '—'
+      whatsappResult = await sendWhatsAppTemplate(tenant.phone, 'ap_trial_ended', [tenant.name ?? 'there', trialEndDateText])
     }
     if (!whatsappResult.success) console.error(`Trial-ended WhatsApp failed for ${tenant.id}:`, whatsappResult.error)
 

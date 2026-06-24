@@ -46,6 +46,7 @@ export type Tenant = {
   subscription_status?: string | null
   trial_ends_at?: string | null
   current_period_end?: string | null
+  cancel_at_period_end?: boolean
 }
 
 export type TenantLogin = {

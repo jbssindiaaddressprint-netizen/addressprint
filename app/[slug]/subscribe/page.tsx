@@ -17,6 +17,8 @@ export default async function SubscribePage({ params }: Props) {
 
       <SubscribeOptions slug={slug} />
 
+      <p className="mt-4 text-xs text-slate-500">Cancel anytime, no questions asked.</p>
+
       <a
         href="https://wa.me/919383861514"
         className="mt-6 text-sm text-slate-500 underline hover:text-slate-300"

@@ -156,6 +156,9 @@ export default function DashboardShell({ tenant, initialCustomers, initialTransp
   const onExtraPhonesUpdated = (phones: string[]) =>
     setTenantData(p => ({ ...p, extra_phones: phones }))
 
+  const onSubscriptionChanged = (updates: Partial<Tenant>) =>
+    setTenantData(p => ({ ...p, ...updates }))
+
   return (
     <div className={`${fontClassName} flex h-screen flex-col overflow-hidden bg-slate-100`}>
       {/* Navbar */}
@@ -287,6 +290,7 @@ export default function DashboardShell({ tenant, initialCustomers, initialTransp
             <ProfileSection
               tenant={tenantData}
               onExtraPhonesUpdated={onExtraPhonesUpdated}
+              onSubscriptionChanged={onSubscriptionChanged}
             />
           )}
           {section === 'logins' && (

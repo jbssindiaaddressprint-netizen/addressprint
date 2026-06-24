@@ -20,7 +20,7 @@ export default async function DashboardPage({ params }: Props) {
 
   const { data: tenant } = await supabaseAdmin
     .from('tenants')
-    .select('id, name, slug, logo_url, address, pin, state, country, phone, extra_phones, prints_month, prints_lifetime, subscription_status, trial_ends_at, current_period_end, paid_logins')
+    .select('id, name, slug, logo_url, address, pin, state, country, phone, extra_phones, prints_month, prints_lifetime, subscription_status, trial_ends_at, current_period_end, cancel_at_period_end, paid_logins')
     .eq('slug', slug)
     .single()
 

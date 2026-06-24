@@ -102,7 +102,7 @@ export async function POST(request: NextRequest) {
   if (subscriptionId && DEACTIVATING_EVENTS.has(eventType)) {
     await supabaseAdmin
       .from('tenants')
-      .update({ subscription_status: 'cancelled' })
+      .update({ subscription_status: 'cancelled', cancel_at_period_end: false })
       .eq('razorpay_subscription_id', subscriptionId)
 
     // If it was an extra-login subscription instead, just mark it cancelled for

@@ -9,8 +9,9 @@ export default function AdminLoginPage() {
       <div className="w-full max-w-sm">
         <div className="mb-8 text-center">
           <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-[#0F766E]">
-            <svg viewBox="0 0 24 24" fill="currentColor" className="h-6 w-6 text-white">
-              <path d="M13 2L3 14h8.5l-1.5 8L20 10h-8.5L13 2z" />
+            <svg viewBox="0 0 24 24" className="h-6 w-6">
+              <polygon points="4.7,12 10.3,5.8 18.5,5.8 18.5,18.2 10.3,18.2" fill="white" />
+              <circle cx="8.1" cy="12" r="1.2" fill="#0F766E" />
             </svg>
           </div>
           <h1 className="text-xl font-bold text-white">AddressPrint Admin</h1>

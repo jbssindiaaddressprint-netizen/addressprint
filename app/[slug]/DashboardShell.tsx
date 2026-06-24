@@ -174,8 +174,9 @@ export default function DashboardShell({ tenant, initialCustomers, initialTransp
             </svg>
           </button>
           <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#0F766E]">
-            <svg viewBox="0 0 24 24" fill="currentColor" className="h-4 w-4 text-white">
-              <path d="M13 2L3 14h8.5l-1.5 8L20 10h-8.5L13 2z" />
+            <svg viewBox="0 0 24 24" className="h-4 w-4">
+              <polygon points="4.7,12 10.3,5.8 18.5,5.8 18.5,18.2 10.3,18.2" fill="white" />
+              <circle cx="8.1" cy="12" r="1.2" fill="#0F766E" />
             </svg>
           </div>
           <span className="text-[15px] font-bold tracking-tight text-white">AddressPrint</span>

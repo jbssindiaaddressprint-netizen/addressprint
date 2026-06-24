@@ -84,23 +84,23 @@ function CareSvgContent({ c }: { c: CareKey }) {
   return <g dangerouslySetInnerHTML={{ __html: CARE_SVG_HTML[c] }} />
 }
 
-function CareBox({ c, label, sp }: { c: CareKey; label: string; sp: SP }) {
+function CareBox({ c, label, sp, inkSaver }: { c: CareKey; label: string; sp: SP; inkSaver: boolean }) {
   return (
-    <div style={{ border: '0.75px solid #111', padding: 2 * PT, textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 2 * PT }}>
-      <svg viewBox="0 0 24 24" width={sp.iconMm * MM} height={sp.iconMm * MM} fill="none" stroke="#111" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round">
+    <div style={{ border: `0.75px solid ${inkSaver ? '#666' : '#111'}`, padding: 2 * PT, textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 2 * PT }}>
+      <svg viewBox="0 0 24 24" width={sp.iconMm * MM} height={sp.iconMm * MM} fill="none" stroke={inkSaver ? '#666' : '#111'} strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round">
         <CareSvgContent c={c} />
       </svg>
-      <div style={{ fontSize: sp.clPt * PT, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em', lineHeight: 1.2 }}>{label}</div>
+      <div style={{ fontSize: sp.clPt * PT, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em', lineHeight: 1.2, color: inkSaver ? '#555' : '#000' }}>{label}</div>
     </div>
   )
 }
 
-function CareRow({ careKeys, sp, isEnv }: { careKeys: CareKey[]; sp: SP; isEnv: boolean }) {
+function CareRow({ careKeys, sp, isEnv, inkSaver }: { careKeys: CareKey[]; sp: SP; isEnv: boolean; inkSaver: boolean }) {
   if (!careKeys.length) return null
   const careLabels: Record<CareKey, string> = { fragile: 'FRAGILE', glass: 'GLASS', dry: 'KEEP DRY', up: 'THIS SIDE UP', nobend: 'NO BEND' }
   return (
     <div style={{ display: 'flex', flexWrap: 'wrap', gap: 3 * MM, marginBottom: 2 * MM, justifyContent: isEnv ? 'flex-start' : 'center' }}>
-      {careKeys.map(c => <CareBox key={c} c={c} label={careLabels[c]} sp={sp} />)}
+      {careKeys.map(c => <CareBox key={c} c={c} label={careLabels[c]} sp={sp} inkSaver={inkSaver} />)}
     </div>
   )
 }
@@ -122,6 +122,12 @@ export function buildPrintHTML(
   const isEnv = ['DL', 'C5', 'C4'].includes(size)
   const bodyColor = inkSaver ? '#555' : '#000'
 
+  // A5 prints 2-up on one A4 sheet (rotated to landscape, stacked, cut in half) to halve paper use.
+  // Every other size keeps the original single-label-pinned-in-the-corner behaviour.
+  const isA5TwoUp = size === 'A5'
+  const tileW = isA5TwoUp ? ph : pw
+  const tileH = isA5TwoUp ? pw : ph
+
   const esc = (v: unknown) => String(v ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;')
   const nl2br = (v: unknown) => esc(v).replace(/\n/g, '<br>')
   
@@ -131,9 +137,9 @@ export function buildPrintHTML(
   const careHtml = selectedCare.length
     ? `<div style="display: flex; flex-wrap: wrap; gap: 3mm; margin-bottom: 2mm; ${isEnv ? '' : 'justify-content: center;'}">
         ${selectedCare.map(c => 
-          `<div style="border: 0.75px solid #111; padding: 2pt; text-align: center; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2pt;">
-            <svg viewBox="0 0 24 24" width="${sp.iconMm}mm" height="${sp.iconMm}mm" fill="none" stroke="#111" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">${CARE_SVG_HTML[c]}</svg>
-            <div style="font-size: ${sp.clPt}pt; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; line-height: 1.2;">${careLabels[c]}</div>
+          `<div style="border: 0.75px solid ${inkSaver ? '#666' : '#111'}; padding: 2pt; text-align: center; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2pt;">
+            <svg viewBox="0 0 24 24" width="${sp.iconMm}mm" height="${sp.iconMm}mm" fill="none" stroke="${inkSaver ? '#666' : '#111'}" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">${CARE_SVG_HTML[c]}</svg>
+            <div style="font-size: ${sp.clPt}pt; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; line-height: 1.2; color: ${bodyColor};">${careLabels[c]}</div>
           </div>`
         ).join('')}
        </div>`
@@ -148,12 +154,12 @@ export function buildPrintHTML(
   
   const contacts = (customer?.contacts ?? []).map(c => `${esc(c?.name)}${c?.phone ? ` : ${esc(c.phone)}` : ''}`).filter(Boolean)
   const contactsHtml = contacts.length 
-    ? `<div>${contacts.map(c => `<div style="font-size: ${sp.adPt}pt; font-weight: 800; margin-top: 4pt;">${c}</div>`).join('')}</div>`
+    ? `<div>${contacts.map(c => `<div style="font-size: ${sp.adPt}pt; font-weight: 800; margin-top: 4pt; color: ${bodyColor};">${c}</div>`).join('')}</div>`
     : ''
   
   const bottomPhones = [tenant?.phone, ...(tenant?.extra_phones ?? [])].filter(Boolean).join(' / ')
   const bottomAddress = [tenant?.address, tenant?.pin, tenant?.state].filter(Boolean).join(', ')
-  const bottomLogo = tenant?.logo_url ? `<img src="${esc(tenant.logo_url)}" alt="Logo" style="max-height: ${sp.logoMm}mm; max-width: 28mm; object-fit: contain; flex-shrink: 0;" />` : ''
+  const bottomLogo = tenant?.logo_url ? `<img src="${esc(tenant.logo_url)}" alt="Logo" style="max-height: ${sp.logoMm}mm; max-width: 28mm; object-fit: contain; flex-shrink: 0; filter: ${inkSaver ? 'grayscale(100%)' : 'none'};" />` : ''
   const showFrom = fromOn && !!(tenant?.name || tenant?.address || tenant?.phone || bottomLogo)
 
   return `<!doctype html>
@@ -182,7 +188,7 @@ export function buildPrintHTML(
          so it perfectly aligns with the right-aligned physical feed tray of the printer! */
       ${isEnv ? 'right: 0; left: auto;' : 'left: 0; right: auto;'}
       
-      width: ${pw}mm !important; height: ${ph}mm !important; 
+      width: ${tileW}mm !important; height: ${tileH}mm !important; 
       padding: ${sp.padMm}mm; 
       display: flex; flex-direction: column; box-sizing: border-box; overflow: hidden;
     }
@@ -220,10 +226,11 @@ export function buildPrintHTML(
   </style>
 </head>
 <body>
-  <div class="sheet">
+  ${(() => {
+    const labelContent = `
     ${transporterName ? `
     <div class="top">
-      <div style="font-size: ${sp.tBarPt}pt; font-weight: 800;">${transporterName}</div>
+      <div style="font-size: ${sp.tBarPt}pt; font-weight: 800; color: ${bodyColor};">${transporterName}</div>
       ${transporterLine ? `<div style="margin-top: 1mm; font-size: ${sp.tBarSubPt}pt; font-weight: 400; color: ${inkSaver ? '#666' : '#444'};">${esc(transporterLine)}</div>` : ''}
     </div>` : ''}
     
@@ -231,7 +238,7 @@ export function buildPrintHTML(
       <div class="middle-inner">
         ${careHtml}
         <div>
-          <div style="font-size: ${sp.toPt}pt; font-weight: 800; text-decoration: underline;">To:</div>
+          <div style="font-size: ${sp.toPt}pt; font-weight: 800; text-decoration: underline; color: ${bodyColor};">To:</div>
           <div style="font-size: ${sp.coPt}pt; font-weight: 900; line-height: 1.05; word-break: break-word; margin-top: 4pt; color: ${bodyColor};">${customerName}</div>
         </div>
         <div style="font-size: ${sp.adPt}pt; line-height: 1.4; white-space: pre-wrap; color: ${bodyColor};">${customerAddress}</div>
@@ -242,7 +249,7 @@ export function buildPrintHTML(
     
     ${showFrom ? `
     <div class="bottom">
-      ${!isEnv ? `<div style="font-size: ${sp.fNmPt}pt; font-weight: 800; text-decoration: underline; margin-bottom: 1.5mm;">From:</div>` : ''}
+      ${!isEnv ? `<div style="font-size: ${sp.fNmPt}pt; font-weight: 800; text-decoration: underline; margin-bottom: 1.5mm; color: ${bodyColor};">From:</div>` : ''}
       <div style="display: flex; align-items: flex-start; gap: 2.5mm;">
         ${bottomLogo}
         <div style="flex: 1; font-size: ${sp.fAdPt}pt; line-height: 1.4; color: ${bodyColor};">
@@ -251,8 +258,19 @@ export function buildPrintHTML(
           <div>Ph: ${esc(bottomPhones)}</div>
         </div>
       </div>
-    </div>` : ''}
-  </div>
+    </div>` : ''}`
+
+    if (isA5TwoUp) {
+      // Two identical landscape tiles stacked on one A4 sheet (148mm x2 = 296mm, fits the
+      // 297mm page height), plus a dashed guide line at the midpoint to cut along.
+      return `
+      <div class="sheet">${labelContent}</div>
+      <div class="sheet" style="top: ${tileH}mm;">${labelContent}</div>
+      <div style="position: absolute; top: ${tileH}mm; left: 0; width: 100%; border-top: 1px dashed #999;"></div>`
+    }
+
+    return `<div class="sheet">${labelContent}</div>`
+  })()}
   <script>window.addEventListener('load',()=>{setTimeout(()=>{window.focus();window.print();},250);});window.onafterprint=()=>{try{window.close();}catch(e){};};</script>
 </body>
 </html>`
@@ -367,17 +385,25 @@ export default function PrintSection({ tenant, customers, transporters, defaultC
   const [pw, ph] = SIZE_DIMS[size]
   const sp = SZ[size]
   const isEnv = ENV.includes(size)
-  const PREVIEW_W = 320
-  const scale = PREVIEW_W / (pw * MM)
-  const previewH = Math.round(ph * MM * scale)
 
-  const pvCareRow = careSym.length > 0 ? <CareRow careKeys={careSym.map(s => CARE_KEY_MAP[s])} sp={sp} isEnv={isEnv} /> : null
+  // Mirrors buildPrintHTML: A5 renders as two landscape tiles stacked on one A4 sheet.
+  const isA5TwoUp = size === 'A5'
+  const tileW = isA5TwoUp ? ph : pw
+  const tileH = isA5TwoUp ? pw : ph
+  const canvasW = tileW
+  const canvasH = isA5TwoUp ? tileH * 2 : tileH
+
+  const PREVIEW_W = 320
+  const scale = PREVIEW_W / (canvasW * MM)
+  const previewH = Math.round(canvasH * MM * scale)
+
+  const pvCareRow = careSym.length > 0 ? <CareRow careKeys={careSym.map(s => CARE_KEY_MAP[s])} sp={sp} isEnv={isEnv} inkSaver={inkSaver} /> : null
 
   const pvTBar = transporter ? (
     <div style={{ textAlign: 'center', borderBottom: '2px solid #000', paddingBottom: 2.5 * MM, marginBottom: sp.gapMm * MM, flexShrink: 0 }}>
-      <div style={{ fontSize: sp.tBarPt * PT, fontWeight: 800 }}>{transporter.name}</div>
+      <div style={{ fontSize: sp.tBarPt * PT, fontWeight: 800, color: inkSaver ? '#555' : '#000' }}>{transporter.name}</div>
       {[branch, freight, lr, mode].filter(Boolean).length > 0 && (
-        <div style={{ marginTop: 1 * MM, fontSize: sp.tBarSubPt * PT, fontWeight: 400, color: '#444' }}>
+        <div style={{ marginTop: 1 * MM, fontSize: sp.tBarSubPt * PT, fontWeight: 400, color: inkSaver ? '#666' : '#444' }}>
           {[branch, freight, lr, mode].filter(Boolean).join(' · ')}
         </div>
       )}
@@ -395,7 +421,7 @@ export default function PrintSection({ tenant, customers, transporters, defaultC
     }}>
       {pvCareRow}
       <div>
-        <div style={{ fontSize: sp.toPt * PT, fontWeight: 800, textDecoration: 'underline' }}>To:</div>
+        <div style={{ fontSize: sp.toPt * PT, fontWeight: 800, textDecoration: 'underline', color: inkSaver ? '#555' : '#000' }}>To:</div>
         <div style={{ fontSize: sp.coPt * PT, fontWeight: 900, lineHeight: 1.05, wordBreak: 'break-word', marginTop: 4 * PT, color: inkSaver ? '#555' : '#000' }}>{customer.company_name}</div>
       </div>
       <div style={{ fontSize: sp.adPt * PT, lineHeight: 1.4, whiteSpace: 'pre-wrap', color: inkSaver ? '#555' : '#000' }}>{customer.address}</div>
@@ -413,7 +439,7 @@ export default function PrintSection({ tenant, customers, transporters, defaultC
   const pvFromInner = showFrom ? (
     <div style={{ display: 'flex', alignItems: 'flex-start', gap: 2.5 * MM }}>
       {tenant.logo_url && (
-        <img src={tenant.logo_url} alt="" style={{ maxHeight: sp.logoMm * MM, maxWidth: 28 * MM, objectFit: 'contain', flexShrink: 0 }} />
+        <img src={tenant.logo_url} alt="" style={{ maxHeight: sp.logoMm * MM, maxWidth: 28 * MM, objectFit: 'contain', flexShrink: 0, filter: inkSaver ? 'grayscale(100%)' : 'none' }} />
       )}
       <div style={{ flex: 1, fontSize: sp.fAdPt * PT, lineHeight: 1.4, color: inkSaver ? '#555' : '#000' }}>
         <div style={{ fontSize: sp.fNmPt * PT, fontWeight: 800, marginBottom: 0.5 * MM, color: inkSaver ? '#555' : '#000' }}>{tenant.name}</div>
@@ -425,7 +451,7 @@ export default function PrintSection({ tenant, customers, transporters, defaultC
 
   const pvFromPortrait = showFrom ? (
     <div style={{ borderTop: '2px solid #000', paddingTop: 2.5 * MM, marginTop: sp.gapMm * MM, flexShrink: 0 }}>
-      <div style={{ fontSize: sp.fNmPt * PT, fontWeight: 800, textDecoration: 'underline', marginBottom: 1.5 * MM }}>From:</div>
+      <div style={{ fontSize: sp.fNmPt * PT, fontWeight: 800, textDecoration: 'underline', marginBottom: 1.5 * MM, color: inkSaver ? '#555' : '#000' }}>From:</div>
       {pvFromInner}
     </div>
   ) : null
@@ -544,7 +570,16 @@ export default function PrintSection({ tenant, customers, transporters, defaultC
         </div>
 
         <div className={sec}>
-          <p className={hd}>Handle With Care</p>
+          <div className="flex items-center justify-between">
+            <p className={hd}>Handle With Care</p>
+            <button
+              type="button"
+              onClick={() => setCareSym(careSym.length === CARE_SYMBOLS.length ? [] : [...CARE_SYMBOLS])}
+              className="text-xs font-semibold text-[#0F766E] hover:underline"
+            >
+              {careSym.length === CARE_SYMBOLS.length ? 'Clear all' : 'Select all'}
+            </button>
+          </div>
           <div className="flex flex-wrap gap-2">
             {CARE_SYMBOLS.map(sym => (
               <button key={sym} type="button" onClick={() => toggleCare(sym)} className={`flex flex-col items-center gap-1.5 rounded-xl border-2 px-3 py-2.5 min-w-[80px] transition-all ${careSym.includes(sym) ? 'border-[#0F766E] bg-[#0F766E]/10 text-[#0F766E]' : 'border-slate-200 text-slate-500 hover:border-slate-400 hover:text-slate-700'}`}>
@@ -573,24 +608,46 @@ export default function PrintSection({ tenant, customers, transporters, defaultC
             <p className="text-sm text-slate-400">Select a customer to preview the label</p>
           </div>
         ) : (
-          <div className="shadow-2xl" style={{ width: PREVIEW_W, height: previewH, overflow: 'hidden' }}>
-            <div style={{
-              width: pw * MM, height: ph * MM,
-              transform: `scale(${scale})`, transformOrigin: 'top left',
-              background: 'white', fontFamily: 'Arial, Helvetica, sans-serif', color: '#000',
-              display: 'flex', flexDirection: 'column',
-              padding: sp.padMm * MM, boxSizing: 'border-box', overflow: 'hidden',
-              position: 'relative',
-            }}>
-              {pvTBar}
-              <div style={{ flexGrow: 1, display: 'flex', flexDirection: 'column', ...(isEnv ? { justifyContent: 'center', maxHeight: '100%', overflow: 'hidden' } : { justifyContent: 'space-evenly', paddingTop: '5mm', paddingBottom: '5mm' }), minHeight: 0 }}>
-                {pvToBlock}
-              </div>
-              {isEnv ? pvFromEnv : pvFromPortrait}
-            </div>
+          <div className="shadow-2xl" style={{ width: PREVIEW_W, height: previewH, overflow: 'hidden', position: 'relative' }}>
+            {(() => {
+              const tileStyle = {
+                width: tileW * MM, height: tileH * MM,
+                background: 'white', fontFamily: 'Arial, Helvetica, sans-serif', color: '#000',
+                display: 'flex', flexDirection: 'column' as const,
+                padding: sp.padMm * MM, boxSizing: 'border-box' as const, overflow: 'hidden',
+                position: 'absolute' as const, left: 0,
+              }
+              const tileBody = (
+                <>
+                  {pvTBar}
+                  <div style={{ flexGrow: 1, display: 'flex', flexDirection: 'column', ...(isEnv ? { justifyContent: 'center', maxHeight: '100%', overflow: 'hidden' } : { justifyContent: 'space-evenly', paddingTop: '5mm', paddingBottom: '5mm' }), minHeight: 0 }}>
+                    {pvToBlock}
+                  </div>
+                  {isEnv ? pvFromEnv : pvFromPortrait}
+                </>
+              )
+
+              if (isA5TwoUp) {
+                return (
+                  <div style={{ transform: `scale(${scale})`, transformOrigin: 'top left', width: canvasW * MM, height: canvasH * MM, position: 'relative' }}>
+                    <div style={{ ...tileStyle, top: 0 }}>{tileBody}</div>
+                    <div style={{ ...tileStyle, top: tileH * MM }}>{tileBody}</div>
+                    <div style={{ position: 'absolute', top: tileH * MM, left: 0, width: '100%', borderTop: '1px dashed #999' }} />
+                  </div>
+                )
+              }
+
+              return (
+                <div style={{ ...tileStyle, position: 'relative', transform: `scale(${scale})`, transformOrigin: 'top left' }}>
+                  {tileBody}
+                </div>
+              )
+            })()}
           </div>
         )}
-        <p className="mt-3 text-xs text-slate-400">{pw}mm × {ph}mm &nbsp;·&nbsp; Screen preview exactly matches print dimensions</p>
+        <p className="mt-3 text-xs text-slate-400">
+          {isA5TwoUp ? `2× ${tileW}mm × ${tileH}mm on one A4 sheet — cut in half` : `${pw}mm × ${ph}mm`} &nbsp;·&nbsp; Screen preview exactly matches print dimensions
+        </p>
       </div>
     </div>
   )

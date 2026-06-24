@@ -3,7 +3,7 @@ import { decodeSession, SESSION_COOKIE } from '@/lib/session'
 import { ADMIN_SESSION_COOKIE } from '@/lib/admin-session'
 
 // Top-level paths that are NOT tenant dashboards and should never be password-protected.
-const RESERVED_PATHS = new Set(['onboard', 'admin', 'api'])
+const RESERVED_PATHS = new Set(['onboard', 'admin', 'api', 'forgot-password'])
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl

@@ -6,6 +6,7 @@ import { redirect } from 'next/navigation'
 import { randomUUID } from 'crypto'
 import { supabaseAdmin } from '@/lib/supabase'
 import { SESSION_COOKIE, encodeSession } from '@/lib/session'
+import { findTenantsByIdentifier } from '@/lib/identifyTenant'
 
 export type UniversalLoginState = {
   status: 'idle' | 'error'
@@ -16,28 +17,18 @@ export async function universalLogin(
   _prev: UniversalLoginState,
   formData: FormData
 ): Promise<UniversalLoginState> {
-  const phoneRaw = (formData.get('phone') as string) ?? ''
+  const identifier = (formData.get('identifier') as string) ?? ''
   const password = (formData.get('password') as string) ?? ''
-  const phoneDigits = phoneRaw.replace(/\D/g, '').slice(-10)
 
-  if (phoneDigits.length < 10) return { status: 'error', error: 'Please enter a valid 10-digit mobile number.' }
+  if (!identifier.trim()) return { status: 'error', error: 'Please enter your mobile number or email.' }
   if (!password) return { status: 'error', error: 'Please enter your password.' }
 
-  const genericError: UniversalLoginState = { status: 'error', error: 'Incorrect mobile number or password.' }
+  const genericError: UniversalLoginState = { status: 'error', error: 'Incorrect mobile number/email or password.' }
 
-  // Phone numbers aren't guaranteed unique across tenants (a few old test accounts
-  // share one), so check every tenant whose number ends in these digits, not just
-  // the first match — and try every active login on each, same as the per-slug flow.
-  const { data: tenants } = await supabaseAdmin
-    .from('tenants')
-    .select('id, slug, is_active')
-    .ilike('phone', `%${phoneDigits}`)
-
-  if (!tenants || tenants.length === 0) return genericError
+  const tenants = await findTenantsByIdentifier(identifier)
+  if (tenants.length === 0) return genericError
 
   for (const tenant of tenants) {
-    if (tenant.is_active === false) continue
-
     const { data: logins } = await supabaseAdmin
       .from('tenant_logins')
       .select('id, password_hash')
@@ -58,7 +49,7 @@ export async function universalLogin(
         .eq('id', login.id)
 
       const cookieStore = await cookies()
-      cookieStore.set(SESSION_COOKIE, encodeSession(login.id as string, tenant.id as string, token), {
+      cookieStore.set(SESSION_COOKIE, encodeSession(login.id as string, tenant.id, token), {
         httpOnly: true,
         secure: true,
         sameSite: 'lax',

@@ -1,5 +1,6 @@
 'use client'
 
+import Link from 'next/link'
 import { useActionState, useState } from 'react'
 import { universalLogin, type UniversalLoginState } from './login-actions'
 
@@ -15,18 +16,17 @@ export default function WelcomeLoginForm() {
   return (
     <form action={formAction} className="space-y-4">
       <div>
-        <label htmlFor="phone" className="mb-1.5 block text-sm font-medium text-slate-300">
-          Mobile Number
+        <label htmlFor="identifier" className="mb-1.5 block text-sm font-medium text-slate-300">
+          Mobile Number or Email
         </label>
         <input
-          id="phone"
-          name="phone"
-          type="tel"
-          inputMode="numeric"
+          id="identifier"
+          name="identifier"
+          type="text"
           required
           autoFocus
           disabled={pending}
-          placeholder="98765 43210"
+          placeholder="98765 43210 or you@company.com"
           className={inputBase}
         />
       </div>
@@ -68,6 +68,10 @@ export default function WelcomeLoginForm() {
       >
         {pending ? 'Logging in…' : 'Log In'}
       </button>
+
+      <Link href="/forgot-password" className="block text-center text-sm text-slate-400 hover:text-slate-300">
+        Forgot password?
+      </Link>
     </form>
   )
 }

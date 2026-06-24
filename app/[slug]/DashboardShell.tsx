@@ -10,6 +10,7 @@ import CustomersSection from './sections/CustomersSection'
 import TransportersSection from './sections/TransportersSection'
 import PrintSection from './sections/PrintSection'
 import ProfileSection from './sections/ProfileSection'
+import SubscriptionBanner from './SubscriptionBanner'
 
 export type Section = 'dashboard' | 'customers' | 'transporters' | 'print' | 'profile'
 
@@ -191,6 +192,8 @@ export default function DashboardShell({ tenant, initialCustomers, initialTransp
           </button>
         </div>
       </header>
+
+      <SubscriptionBanner tenant={tenantData} />
 
       {/* Body */}
       <div className="flex flex-1 overflow-hidden relative">

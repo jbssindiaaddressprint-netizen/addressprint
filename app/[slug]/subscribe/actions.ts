@@ -19,13 +19,6 @@ const PLAN_CONFIG: Record<PlanKey, { planId: string; totalCount: number }> = {
   base_yearly: { planId: 'plan_T4nJMsz5cfB6VM', totalCount: 30 }, // every 1 year x 30yrs
 }
 
-// Coupon codes the tenant can type in, mapped to a Razorpay Offer ID created in the
-// dashboard. TEST99 is a throwaway offer for safely testing real payments at ~₹1-5
-// instead of full price — remove it once real coupons are needed.
-const COUPON_CODES: Record<string, string> = {
-  TEST99: 'offer_T59sWEOWpKkkB6',
-}
-
 export async function startSubscription(
   _prev: SubscribeState,
   formData: FormData
@@ -39,11 +32,18 @@ export async function startSubscription(
   const couponCodeRaw = (formData.get('couponCode') as string | null)?.trim().toUpperCase()
   let offerId: string | undefined
   if (couponCodeRaw) {
-    const matchedOfferId = COUPON_CODES[couponCodeRaw]
-    if (!matchedOfferId) {
+    // Coupons now live in the coupon_codes table (Supabase) instead of being hardcoded
+    // here, so new test/internal codes can be added without a code deploy.
+    const { data: coupon } = await supabaseAdmin
+      .from('coupon_codes')
+      .select('offer_id')
+      .eq('code', couponCodeRaw)
+      .maybeSingle()
+
+    if (!coupon) {
       return { status: 'error', error: `"${couponCodeRaw}" is not a valid coupon code.` }
     }
-    offerId = matchedOfferId
+    offerId = coupon.offer_id as string
   }
 
   const { data: tenant, error: tenantError } = await supabaseAdmin

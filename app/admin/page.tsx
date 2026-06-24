@@ -22,7 +22,9 @@ export default async function AdminPage() {
   const [tenantsRes, customersRes] = await Promise.all([
     supabaseAdmin
       .from('tenants')
-      .select('id, name, slug, email, phone, is_active, customer_limit, paid_logins, prints_month, prints_lifetime')
+      .select(
+        'id, name, slug, email, phone, is_active, customer_limit, paid_logins, prints_month, prints_lifetime, subscription_status, trial_ends_at, current_period_end, subscription_amount'
+      )
       .order('name'),
     supabaseAdmin.from('customers').select('tenant_id'),
   ])

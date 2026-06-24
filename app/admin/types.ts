@@ -9,4 +9,8 @@ export type AdminTenant = {
   paid_logins: number
   prints_month: number
   prints_lifetime: number
+  subscription_status: string | null
+  trial_ends_at: string | null
+  current_period_end: string | null
+  subscription_amount: number | null
 }

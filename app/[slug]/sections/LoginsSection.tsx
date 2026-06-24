@@ -10,11 +10,11 @@ interface Props {
   onAdded: (login: TenantLogin) => void
 }
 
-const EXTRA_PLANS: { key: string; label: string; price: string; sub: string }[] = [
-  { key: 'extra_monthly', label: 'Monthly', price: '₹299', sub: 'billed every month' },
-  { key: 'extra_3month', label: '3 Months', price: '₹850', sub: 'billed once every 3 months' },
-  { key: 'extra_6month', label: '6 Months', price: '₹1,650', sub: 'billed once every 6 months' },
-  { key: 'extra_yearly', label: 'Yearly', price: '₹3,588', sub: 'billed once a year · 13th month free' },
+const EXTRA_PLANS: { key: string; label: string; base: string; total: string; sub: string }[] = [
+  { key: 'extra_monthly', label: 'Monthly', base: '₹299', total: '₹353', sub: 'billed every month' },
+  { key: 'extra_3month', label: '3 Months', base: '₹870', total: '₹1,027', sub: 'billed once every 3 months · ~3% off' },
+  { key: 'extra_6month', label: '6 Months', base: '₹1,700', total: '₹2,006', sub: 'billed once every 6 months · ~5% off' },
+  { key: 'extra_yearly', label: 'Yearly', base: '₹3,300', total: '₹3,894', sub: 'billed once a year · ~8% off' },
 ]
 
 const initialExtraState: ExtraLoginState = { status: 'idle' }
@@ -161,7 +161,10 @@ export default function LoginsSection({ tenant, logins, onAdded }: Props) {
                     <span className="block text-sm font-semibold text-slate-800">{plan.label}</span>
                     <span className="block text-xs text-slate-500">{plan.sub}</span>
                   </span>
-                  <span className="text-base font-bold text-[#0F766E]">{plan.price}</span>
+                  <span className="text-right">
+                    <span className="block text-base font-bold text-[#0F766E]">{plan.total}</span>
+                    <span className="block text-[10px] text-slate-400">{plan.base} + 18% GST</span>
+                  </span>
                 </button>
               </form>
             ))}

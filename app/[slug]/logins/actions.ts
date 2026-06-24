@@ -57,11 +57,15 @@ export type ExtraLoginState = {
 type ExtraPlanKey = 'extra_monthly' | 'extra_3month' | 'extra_6month' | 'extra_yearly'
 
 // Same total_count pattern as the base plan: effectively "renews until cancelled."
+// These amounts already include 18% GST (created 24 Jun 2026, replacing the pre-GST
+// plans below — Razorpay plans are immutable, so old plans were retired, not edited).
+// Old (pre-GST, retired): extra_monthly plan_T4nKjaOIqh8Tql, extra_3month plan_T4nLa3ep5u4Eoc,
+// extra_6month plan_T4nLxZmhm0SbUp, extra_yearly plan_T4nMQOqdUoTpNC
 const EXTRA_PLAN_CONFIG: Record<ExtraPlanKey, { planId: string; totalCount: number }> = {
-  extra_monthly: { planId: 'plan_T4nKjaOIqh8Tql', totalCount: 360 },
-  extra_3month: { planId: 'plan_T4nLa3ep5u4Eoc', totalCount: 120 },
-  extra_6month: { planId: 'plan_T4nLxZmhm0SbUp', totalCount: 60 },
-  extra_yearly: { planId: 'plan_T4nMQOqdUoTpNC', totalCount: 30 },
+  extra_monthly: { planId: 'plan_T5UBYMZHSxUM7V', totalCount: 360 }, // ₹353 incl. GST
+  extra_3month: { planId: 'plan_T5UCB1vLQxZBaZ', totalCount: 120 }, // ₹1,027 incl. GST
+  extra_6month: { planId: 'plan_T5UIDfKaaqiAkK', totalCount: 60 }, // ₹2,006 incl. GST
+  extra_yearly: { planId: 'plan_T5UIuugX1UxDBg', totalCount: 30 }, // ₹3,894 incl. GST
 }
 
 export async function startExtraLoginSubscription(

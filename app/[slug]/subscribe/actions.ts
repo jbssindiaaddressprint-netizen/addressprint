@@ -12,11 +12,16 @@ type PlanKey = 'base_monthly' | 'base_3month' | 'base_6month' | 'base_yearly'
 
 // total_count = number of billing cycles. Capped at the ~30-year max Razorpay allows,
 // which in practice means "renews automatically until cancelled."
+// These plan amounts already include 18% GST (created 24 Jun 2026, replacing the
+// pre-GST plans below — Razorpay plans are immutable, so old plans were never edited,
+// just retired in favour of these new ones).
+// Old (pre-GST, retired): base_monthly plan_T4nHHmca4SFj7Z, base_3month plan_T4nI3ge2xPuBrH,
+// base_6month plan_T4nImKxQwgqrud, base_yearly plan_T4nJMsz5cfB6VM
 const PLAN_CONFIG: Record<PlanKey, { planId: string; totalCount: number }> = {
-  base_monthly: { planId: 'plan_T4nHHmca4SFj7Z', totalCount: 360 }, // every 1 month x 30yrs
-  base_3month: { planId: 'plan_T4nI3ge2xPuBrH', totalCount: 120 }, // every 3 months x 30yrs
-  base_6month: { planId: 'plan_T4nImKxQwgqrud', totalCount: 60 }, // every 6 months x 30yrs
-  base_yearly: { planId: 'plan_T4nJMsz5cfB6VM', totalCount: 30 }, // every 1 year x 30yrs
+  base_monthly: { planId: 'plan_T5U3sa4t7avyg8', totalCount: 360 }, // every 1 month x 30yrs — ₹589 incl. GST
+  base_3month: { planId: 'plan_T5U7vVp8LTsiv6', totalCount: 120 }, // every 3 months x 30yrs — ₹1,711 incl. GST
+  base_6month: { planId: 'plan_T5UA9keqdFn9ND', totalCount: 60 }, // every 6 months x 30yrs — ₹3,351 incl. GST
+  base_yearly: { planId: 'plan_T5UAvgA0mKPS3D', totalCount: 30 }, // every 1 year x 30yrs — ₹6,490 incl. GST
 }
 
 export async function startSubscription(
@@ -30,6 +35,8 @@ export async function startSubscription(
   if (!slug || !config) return { status: 'error', error: 'Invalid plan selected.' }
 
   const couponCodeRaw = (formData.get('couponCode') as string | null)?.trim().toUpperCase()
+  const gstNumber = (formData.get('gstNumber') as string | null)?.trim() || null
+  const billingCompanyName = (formData.get('billingCompanyName') as string | null)?.trim() || null
   let offerId: string | undefined
   if (couponCodeRaw) {
     // Coupons now live in the coupon_codes table (Supabase) instead of being hardcoded
@@ -96,9 +103,15 @@ export async function startSubscription(
 
   // Record the subscription id right away so the webhook (built next) can find this
   // tenant when the payment completes. Status stays "trial" until that webhook confirms.
+  // GST/billing-name only get written if the tenant actually filled them in this time —
+  // leaving them blank on a later renewal shouldn't wipe out what was saved before.
   const { error: updateError } = await supabaseAdmin
     .from('tenants')
-    .update({ razorpay_subscription_id: data.id })
+    .update({
+      razorpay_subscription_id: data.id,
+      ...(gstNumber ? { gst_number: gstNumber } : {}),
+      ...(billingCompanyName ? { billing_company_name: billingCompanyName } : {}),
+    })
     .eq('id', tenant.id)
 
   if (updateError) {

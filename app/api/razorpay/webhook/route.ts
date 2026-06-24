@@ -98,34 +98,30 @@ export async function POST(request: NextRequest) {
 
         // Best-effort notifications — the webhook must still succeed (return 200) even if
         // these fail, otherwise Razorpay will keep retrying a payment event we already processed.
-        try {
-          if (baseTenant.email) {
-            await sendBrevoEmail(
-              baseTenant.email,
-              'Your AddressPrint subscription has been renewed',
-              `<div style="font-family: sans-serif; max-width: 480px;">
-                <p>Hi ${baseTenant.name ?? ''},</p>
-                <p>Your AddressPrint subscription has been renewed. &#8377;${amountText} was charged successfully, and your service is active until <strong>${renewedUntilText}</strong>.</p>
-                <p>Thank you for staying with us!</p>
-                <p>If you ever need help, reach us at support@jbssindia.com.</p>
-                <p style="color: #888; font-size: 12px; margin-top: 24px;">JBSS AddressPrint &middot; support@jbssindia.com</p>
-              </div>`
-            )
-          }
-        } catch {
-          // Ignore — see comment above.
+        // These helpers return {success:false, error} rather than throwing, so we check the
+        // result explicitly and log it — a bare try/catch would silently miss real failures.
+        if (baseTenant.email) {
+          const emailResult = await sendBrevoEmail(
+            baseTenant.email,
+            'Your AddressPrint subscription has been renewed',
+            `<div style="font-family: sans-serif; max-width: 480px;">
+              <p>Hi ${baseTenant.name ?? ''},</p>
+              <p>Your AddressPrint subscription has been renewed. &#8377;${amountText} was charged successfully, and your service is active until <strong>${renewedUntilText}</strong>.</p>
+              <p>Thank you for staying with us!</p>
+              <p>If you ever need help, reach us at support@jbssindia.com.</p>
+              <p style="color: #888; font-size: 12px; margin-top: 24px;">JBSS AddressPrint &middot; support@jbssindia.com</p>
+            </div>`
+          )
+          if (!emailResult.success) console.error(`Renewal-success email failed for ${baseTenant.id}:`, emailResult.error)
         }
 
-        try {
-          if (baseTenant.phone) {
-            await sendWhatsAppTemplate(baseTenant.phone, 'ap_renewal_success', [
-              baseTenant.name ?? 'there',
-              amountText,
-              renewedUntilText,
-            ])
-          }
-        } catch {
-          // Ignore.
+        if (baseTenant.phone) {
+          const whatsappResult = await sendWhatsAppTemplate(baseTenant.phone, 'ap_renewal_success', [
+            baseTenant.name ?? 'there',
+            amountText,
+            renewedUntilText,
+          ])
+          if (!whatsappResult.success) console.error(`Renewal-success WhatsApp failed for ${baseTenant.id}:`, whatsappResult.error)
         }
       }
     } else {

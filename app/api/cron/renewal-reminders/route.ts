@@ -8,12 +8,21 @@ const REMINDER_WINDOW_DAYS = 3
 
 // Vercel invokes this once a day and automatically sends an Authorization header
 // matching the CRON_SECRET env var — we verify it so nobody else can trigger sends.
+// This route now handles two independent daily checks: upcoming renewals, and
+// trials that have just ended.
 export async function GET(request: NextRequest) {
   const authHeader = request.headers.get('authorization')
   if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
+  const renewals = await runRenewalReminders()
+  const trialEnded = await runTrialEndedNotices()
+
+  return NextResponse.json({ status: 'ok', renewals, trialEnded })
+}
+
+async function runRenewalReminders() {
   const { data: tenants, error } = await supabaseAdmin
     .from('tenants')
     .select('id, name, email, phone, current_period_end, subscription_amount')
@@ -21,9 +30,7 @@ export async function GET(request: NextRequest) {
     .is('renewal_reminder_sent_at', null)
     .not('current_period_end', 'is', null)
 
-  if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 })
-  }
+  if (error) return { error: error.message }
 
   const now = Date.now()
 
@@ -89,5 +96,60 @@ export async function GET(request: NextRequest) {
     })
   }
 
-  return NextResponse.json({ status: 'ok', checked: tenants?.length ?? 0, sent, results })
+  return { checked: tenants?.length ?? 0, sent, results }
+}
+
+async function runTrialEndedNotices() {
+  const nowIso = new Date().toISOString()
+
+  const { data: tenants, error } = await supabaseAdmin
+    .from('tenants')
+    .select('id, name, email, phone')
+    .eq('subscription_status', 'trial')
+    .is('trial_ended_notified_at', null)
+    .not('trial_ends_at', 'is', null)
+    .lt('trial_ends_at', nowIso)
+
+  if (error) return { error: error.message }
+
+  let sent = 0
+  const results: { tenantId: string; email?: string; whatsapp?: string }[] = []
+
+  for (const tenant of tenants ?? []) {
+    let emailResult: { success: boolean; error?: string } = { success: false, error: 'No email on file' }
+    let whatsappResult: { success: boolean; error?: string } = { success: false, error: 'No phone on file' }
+
+    if (tenant.email) {
+      emailResult = await sendBrevoEmail(
+        tenant.email,
+        'Your AddressPrint free trial has ended',
+        `<div style="font-family: sans-serif; max-width: 480px;">
+          <p>Hi ${tenant.name ?? ''},</p>
+          <p>Your 3-day free trial of AddressPrint has ended. Subscribe to keep printing your shipping labels without interruption.</p>
+          <p>Questions? Reply to this email or contact support@jbssindia.com.</p>
+          <p style="color: #888; font-size: 12px; margin-top: 24px;">JBSS AddressPrint &middot; support@jbssindia.com</p>
+        </div>`
+      )
+    }
+    if (!emailResult.success) console.error(`Trial-ended email failed for ${tenant.id}:`, emailResult.error)
+
+    if (tenant.phone) {
+      whatsappResult = await sendWhatsAppTemplate(tenant.phone, 'ap_trial_ended', [tenant.name ?? 'there'])
+    }
+    if (!whatsappResult.success) console.error(`Trial-ended WhatsApp failed for ${tenant.id}:`, whatsappResult.error)
+
+    await supabaseAdmin
+      .from('tenants')
+      .update({ trial_ended_notified_at: new Date().toISOString() })
+      .eq('id', tenant.id)
+
+    sent++
+    results.push({
+      tenantId: tenant.id,
+      email: emailResult.success ? 'sent' : emailResult.error,
+      whatsapp: whatsappResult.success ? 'sent' : whatsappResult.error,
+    })
+  }
+
+  return { checked: tenants?.length ?? 0, sent, results }
 }

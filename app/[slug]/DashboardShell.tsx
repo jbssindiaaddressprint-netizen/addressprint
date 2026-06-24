@@ -3,15 +3,17 @@
 import { useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Image from 'next/image'
-import type { Tenant, Customer, Transporter } from './types'
+import type { Tenant, Customer, Transporter, TenantLogin } from './types'
 import { logout, checkSessionValid, clearSessionCookie } from './actions'
 import DashboardSection from './sections/DashboardSection'
 import CustomersSection from './sections/CustomersSection'
 import TransportersSection from './sections/TransportersSection'
 import PrintSection from './sections/PrintSection'
 import ProfileSection from './sections/ProfileSection'
+import LoginsSection from './sections/LoginsSection'
+import SubscriptionBanner from './SubscriptionBanner'
 
-export type Section = 'dashboard' | 'customers' | 'transporters' | 'print' | 'profile'
+export type Section = 'dashboard' | 'customers' | 'transporters' | 'print' | 'profile' | 'logins'
 
 // Auto-logout after this long with zero clicks/keys/scrolling — framed to customers
 // as a data-safety measure, not just a technical session limit.
@@ -21,6 +23,7 @@ interface Props {
   tenant: Tenant
   initialCustomers: Customer[]
   initialTransporters: Transporter[]
+  initialLogins: TenantLogin[]
   fontClassName: string
 }
 
@@ -45,13 +48,18 @@ const NAV: { id: Section; label: string; icon: React.ReactNode }[] = [
     id: 'profile', label: 'Company Profile',
     icon: <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M4 4a2 2 0 012-2h8a2 2 0 012 2v12a1 1 0 110 2h-3a1 1 0 01-1-1v-2a1 1 0 00-1-1H9a1 1 0 00-1 1v2a1 1 0 01-1 1H4a1 1 0 110-2V4zm3 1h2v2H7V5zm2 4H7v2h2V9zm2-4h2v2h-2V5zm2 4h-2v2h2V9z" clipRule="evenodd" /></svg>,
   },
+  {
+    id: 'logins', label: 'Logins',
+    icon: <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd" /></svg>,
+  },
 ]
 
-export default function DashboardShell({ tenant, initialCustomers, initialTransporters, fontClassName }: Props) {
+export default function DashboardShell({ tenant, initialCustomers, initialTransporters, initialLogins, fontClassName }: Props) {
   const router = useRouter()
   const [section, setSection] = useState<Section>('dashboard')
   const [customers, setCustomers] = useState<Customer[]>(initialCustomers)
   const [transporters, setTransporters] = useState<Transporter[]>(initialTransporters)
+  const [logins, setLogins] = useState<TenantLogin[]>(initialLogins)
   const [tenantData, setTenantData] = useState<Tenant>(tenant)
   const [printDefaultCustomer, setPrintDefaultCustomer] = useState<Customer | undefined>()
   const [loggingOut, setLoggingOut] = useState(false)
@@ -139,11 +147,17 @@ export default function DashboardShell({ tenant, initialCustomers, initialTransp
   const onTransporterDeleted = (id: string) =>
     setTransporters(p => p.filter(x => x.id !== id))
 
+  const onLoginAdded = (l: TenantLogin) =>
+    setLogins(p => [...p, l])
+
   const onPrintDone = (counts: { prints_month: number; prints_lifetime: number }) =>
     setTenantData(p => ({ ...p, ...counts }))
 
   const onExtraPhonesUpdated = (phones: string[]) =>
     setTenantData(p => ({ ...p, extra_phones: phones }))
+
+  const onSubscriptionChanged = (updates: Partial<Tenant>) =>
+    setTenantData(p => ({ ...p, ...updates }))
 
   return (
     <div className={`${fontClassName} flex h-screen flex-col overflow-hidden bg-slate-100`}>
@@ -191,6 +205,8 @@ export default function DashboardShell({ tenant, initialCustomers, initialTransp
           </button>
         </div>
       </header>
+
+      <SubscriptionBanner tenant={tenantData} />
 
       {/* Body */}
       <div className="flex flex-1 overflow-hidden relative">
@@ -274,6 +290,14 @@ export default function DashboardShell({ tenant, initialCustomers, initialTransp
             <ProfileSection
               tenant={tenantData}
               onExtraPhonesUpdated={onExtraPhonesUpdated}
+              onSubscriptionChanged={onSubscriptionChanged}
+            />
+          )}
+          {section === 'logins' && (
+            <LoginsSection
+              tenant={tenantData}
+              logins={logins}
+              onAdded={onLoginAdded}
             />
           )}
         </main>

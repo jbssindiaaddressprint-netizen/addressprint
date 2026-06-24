@@ -4,10 +4,12 @@ import { useState, useTransition } from 'react'
 import Image from 'next/image'
 import type { Tenant } from '../types'
 import { updateExtraPhones } from '../actions'
+import SubscriptionCard from '../SubscriptionCard'
 
 interface Props {
   tenant: Tenant
   onExtraPhonesUpdated: (phones: string[]) => void
+  onSubscriptionChanged: (updates: Partial<Tenant>) => void
 }
 
 function LockBadge() {
@@ -21,7 +23,7 @@ function LockBadge() {
   )
 }
 
-export default function ProfileSection({ tenant, onExtraPhonesUpdated }: Props) {
+export default function ProfileSection({ tenant, onExtraPhonesUpdated, onSubscriptionChanged }: Props) {
   const [phones, setPhones] = useState<string[]>(
     Array.from({ length: 3 }, (_, i) => tenant.extra_phones?.[i] ?? '')
   )
@@ -123,6 +125,9 @@ export default function ProfileSection({ tenant, onExtraPhonesUpdated }: Props) 
           <input readOnly value={tenant.phone} className={fieldClass} />
         </div>
       </div>
+
+      {/* Subscription */}
+      <SubscriptionCard tenant={tenant} onChanged={onSubscriptionChanged} />
 
       {/* Editable extra phones */}
       <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm space-y-4">

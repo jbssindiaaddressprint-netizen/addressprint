@@ -5,6 +5,40 @@ import { setTenantActive, updateTenantCaps, updateTenantEmail } from './actions'
 import { logoutAdmin } from './login/actions'
 import type { AdminTenant } from './types'
 
+function formatDate(dateStr: string): string {
+  return new Date(dateStr).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })
+}
+
+// Mirrors the tenant-facing SubscriptionBanner so JBSS sees the same status the tenant sees.
+function BillingStatus({ tenant }: { tenant: AdminTenant }) {
+  const { subscription_status, trial_ends_at, current_period_end, subscription_amount } = tenant
+
+  // Pre-existing tenants never moved onto the billing system have no dates at all —
+  // label them clearly as legacy/free rather than implying they're on a real trial.
+  if (!trial_ends_at && !current_period_end) {
+    return <p className="mt-1 text-xs text-slate-500">Legacy (no billing)</p>
+  }
+
+  if (subscription_status === 'cancelled') {
+    return <p className="mt-1 text-xs text-red-400">Cancelled</p>
+  }
+
+  if (subscription_status === 'trial' && trial_ends_at) {
+    return <p className="mt-1 text-xs text-amber-400">Trial · ends {formatDate(trial_ends_at)}</p>
+  }
+
+  if (subscription_status === 'active' && current_period_end) {
+    return (
+      <p className="mt-1 text-xs text-emerald-400">
+        Renews {formatDate(current_period_end)}
+        {subscription_amount != null ? ` · ₹${subscription_amount}` : ''}
+      </p>
+    )
+  }
+
+  return <p className="mt-1 text-xs text-slate-500">—</p>
+}
+
 interface Props {
   tenants: AdminTenant[]
   customerCounts: Record<string, number>
@@ -208,6 +242,7 @@ export default function AdminPanel({ tenants, customerCounts }: Props) {
                       >
                         {t.is_active ? 'Active' : 'Inactive'}
                       </button>
+                      <BillingStatus tenant={t} />
                     </td>
                     <td className="px-4 py-3">
                       {draft ? (

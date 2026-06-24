@@ -93,6 +93,8 @@ export async function onboardTenant(
 
   const slug = await generateUniqueSlug(toSlug(companyName))
 
+  const trialEndsAt = new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString()
+
   const { data: newTenant, error: dbError } = await supabaseAdmin
     .from('tenants')
     .insert({
@@ -105,6 +107,8 @@ export async function onboardTenant(
       email,
       slug,
       logo_url: logoUrl,
+      subscription_status: 'trial',
+      trial_ends_at: trialEndsAt,
     })
     .select('id')
     .single()

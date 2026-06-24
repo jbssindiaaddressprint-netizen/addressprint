@@ -39,10 +39,16 @@ export async function middleware(request: NextRequest) {
 
   // Confirm the slug in the URL actually belongs to the tenant recorded in the cookie.
   const tenantRes = await fetch(
-    `${supabaseUrl}/rest/v1/tenants?slug=eq.${encodeURIComponent(slug)}&select=id,is_active`,
+    `${supabaseUrl}/rest/v1/tenants?slug=eq.${encodeURIComponent(slug)}&select=id,is_active,subscription_status,trial_ends_at,current_period_end`,
     { headers }
   )
-  const tenantRows = (await tenantRes.json()) as { id: string; is_active: boolean }[]
+  const tenantRows = (await tenantRes.json()) as {
+    id: string
+    is_active: boolean
+    subscription_status: string | null
+    trial_ends_at: string | null
+    current_period_end: string | null
+  }[]
   const tenantRow = tenantRows?.[0]
   const tenantId = tenantRow?.id
   if (!tenantId || tenantId !== session.tenantId) return NextResponse.redirect(loginUrl)
@@ -50,6 +56,25 @@ export async function middleware(request: NextRequest) {
   // An admin-deactivated tenant gets logged out immediately, even mid-session.
   if (tenantRow.is_active === false) {
     return NextResponse.redirect(new URL(`/${slug}/login?reason=inactive`, request.url))
+  }
+
+  // Billing gate. Tenants with no trial_ends_at set (all pre-existing accounts, until
+  // manually moved onto a plan) are never blocked by the trial check below. Their
+  // session stays intact through any redirect, so no one needs to log in again after paying.
+  const trialExpired =
+    tenantRow.subscription_status === 'trial' &&
+    !!tenantRow.trial_ends_at &&
+    new Date(tenantRow.trial_ends_at) < new Date()
+
+  const subscriptionLapsed =
+    tenantRow.subscription_status === 'active' &&
+    !!tenantRow.current_period_end &&
+    new Date(tenantRow.current_period_end) < new Date()
+
+  const subscriptionCancelled = tenantRow.subscription_status === 'cancelled'
+
+  if (trialExpired || subscriptionLapsed || subscriptionCancelled) {
+    return NextResponse.redirect(new URL(`/${slug}/subscribe`, request.url))
   }
 
   // Confirm the session ticket still matches what's stored in the database.

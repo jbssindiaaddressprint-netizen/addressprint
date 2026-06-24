@@ -42,6 +42,20 @@ export type Tenant = {
   extra_phones: string[] | null
   prints_month: number
   prints_lifetime: number
+  paid_logins?: number
+  subscription_status?: string | null
+  trial_ends_at?: string | null
+  current_period_end?: string | null
+  cancel_at_period_end?: boolean
+  subscription_amount?: number | null
+  renewal_reminder_sent_at?: string | null
+}
+
+export type TenantLogin = {
+  id: string
+  label: string
+  is_active: boolean
+  created_at: string
 }
 
 export type LabelSize = 'A4' | 'A5' | 'A6' | 'A7' | 'DL Env' | 'C5 Env' | 'C4 Env'

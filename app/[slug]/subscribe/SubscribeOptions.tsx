@@ -70,8 +70,8 @@ export default function SubscribeOptions({ slug }: { slug: string }) {
               <span className="block text-xs text-slate-400">{plan.sub}</span>
             </span>
             <span className="text-right">
-              <span className="block text-lg font-bold text-[#14B8A6]">{plan.total}</span>
-              <span className="block text-[11px] text-slate-500">{plan.base} + 18% GST</span>
+              <span className="block text-lg font-bold text-[#14B8A6]">{plan.base}<span className="text-xs font-medium text-slate-400"> + GST</span></span>
+              <span className="block text-[11px] text-slate-500">{plan.total} total, incl. 18% GST</span>
             </span>
           </button>
         </form>

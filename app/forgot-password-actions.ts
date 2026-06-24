@@ -51,7 +51,7 @@ export async function requestPasswordReset(
   // Send the same code to every channel we have — email and WhatsApp — so whichever
   // one the person actually checks works.
   if (tenant.email) {
-    await sendBrevoEmail(
+    const emailResult = await sendBrevoEmail(
       tenant.email,
       'Your AddressPrint password reset code',
       `<div style="font-family: sans-serif; max-width: 480px;">
@@ -62,10 +62,12 @@ export async function requestPasswordReset(
         <p style="color: #888; font-size: 12px; margin-top: 24px;">JBSS AddressPrint &middot; support@jbssindia.com</p>
       </div>`
     )
+    if (!emailResult.success) console.error(`Reset-code email failed for ${tenant.id}:`, emailResult.error)
   }
 
   if (tenant.phone) {
-    await sendWhatsAppTemplate(tenant.phone, 'ap_otp_code', [otp])
+    const whatsappResult = await sendWhatsAppTemplate(tenant.phone, 'ap_otp_code', [otp], { buttonCode: otp })
+    if (!whatsappResult.success) console.error(`Reset-code WhatsApp failed for ${tenant.id}:`, whatsappResult.error)
   }
 
   return { status: 'sent', tenantId: tenant.id }

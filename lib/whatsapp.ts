@@ -8,8 +8,9 @@ export async function sendWhatsAppTemplate(
   to: string,
   templateName: string,
   bodyParams: string[],
-  languageCode: string = 'en'
+  opts: { languageCode?: string; buttonCode?: string } = {}
 ): Promise<{ success: boolean; error?: string }> {
+  const { languageCode = 'en', buttonCode } = opts
   const token = process.env.WHATSAPP_ACCESS_TOKEN
   const phoneNumberId = process.env.WHATSAPP_PHONE_NUMBER_ID
   if (!token || !phoneNumberId) {
@@ -23,6 +24,27 @@ export async function sendWhatsAppTemplate(
   const toDigits = to.replace(/\D/g, '')
   if (!toDigits) {
     return { success: false, error: 'No valid phone number to send to.' }
+  }
+
+  const components = bodyParams.length
+    ? [
+        {
+          type: 'body',
+          parameters: bodyParams.map((text) => ({ type: 'text', text })),
+        },
+      ]
+    : []
+
+  // Authentication templates with an OTP "copy code" button require the same code
+  // to appear a second time, in a separate button component — Meta rejects/ignores
+  // the message without it. Only Authentication-category templates need this.
+  if (buttonCode) {
+    components.push({
+      type: 'button',
+      sub_type: 'url',
+      index: '0',
+      parameters: [{ type: 'text', text: buttonCode }],
+    } as unknown as { type: string; parameters: { type: string; text: string }[] })
   }
 
   try {
@@ -39,14 +61,7 @@ export async function sendWhatsAppTemplate(
         template: {
           name: templateName,
           language: { code: languageCode },
-          components: bodyParams.length
-            ? [
-                {
-                  type: 'body',
-                  parameters: bodyParams.map((text) => ({ type: 'text', text })),
-                },
-              ]
-            : [],
+          components,
         },
       }),
     })

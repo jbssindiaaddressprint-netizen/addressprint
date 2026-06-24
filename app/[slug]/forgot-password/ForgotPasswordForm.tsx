@@ -21,7 +21,7 @@ export default function ForgotPasswordForm({ slug }: { slug: string }) {
         <input type="hidden" name="slug" value={slug} />
 
         <div className="rounded-xl border border-[#0F766E]/40 bg-[#0F766E]/10 px-4 py-3 text-sm text-[#14B8A6]">
-          We&apos;ve sent a 6-digit code to your email. Enter it below along with your new password.
+          We&apos;ve sent a 6-digit code to your email and WhatsApp number. Enter it below along with your new password.
         </div>
 
         <div>

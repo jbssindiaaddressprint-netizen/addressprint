@@ -30,6 +30,11 @@ export default function Home() {
             Start your free 3-day trial
           </Link>
         </p>
+        <p className="mt-2 text-center text-sm">
+          <a href="https://jbssindia.com/label-printer.html#pricing" className="text-slate-500 hover:text-slate-300 hover:underline">
+            See pricing
+          </a>
+        </p>
       </div>
     </main>
   )

@@ -3,6 +3,7 @@
 import bcrypt from 'bcryptjs'
 import { supabaseAdmin } from '@/lib/supabase'
 import { sendBrevoEmail } from '@/lib/brevo'
+import { sendWhatsAppTemplate } from '@/lib/whatsapp'
 
 export type RequestOtpState = {
   status: 'idle' | 'sent' | 'error'
@@ -30,7 +31,7 @@ export async function requestPasswordReset(
 
   const { data: tenant } = await supabaseAdmin
     .from('tenants')
-    .select('id, email, name')
+    .select('id, email, phone, name')
     .eq('slug', slug)
     .single()
 
@@ -64,7 +65,13 @@ export async function requestPasswordReset(
   )
 
   if (!emailResult.success) {
+    console.error(`Reset-code email failed for ${tenant.id}:`, emailResult.error)
     return { status: 'error', error: 'Could not send the reset code email. Please try again or contact support.' }
+  }
+
+  if (tenant.phone) {
+    const whatsappResult = await sendWhatsAppTemplate(tenant.phone, 'ap_otp_code', [otp], { buttonCode: otp })
+    if (!whatsappResult.success) console.error(`Reset-code WhatsApp failed for ${tenant.id}:`, whatsappResult.error)
   }
 
   return { status: 'sent' }

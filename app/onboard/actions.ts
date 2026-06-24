@@ -3,6 +3,7 @@
 import bcrypt from 'bcryptjs'
 import { supabaseAdmin } from '@/lib/supabase'
 import { sendBrevoEmail } from '@/lib/brevo'
+import { sendWhatsAppTemplate } from '@/lib/whatsapp'
 
 export type OnboardState = {
   status: 'idle' | 'success' | 'error'
@@ -129,25 +130,31 @@ export async function onboardTenant(
     return { status: 'error', error: 'Could not set up your login. Please try again.' }
   }
 
-  // Best-effort welcome email — signup still succeeds even if this fails.
-  try {
-    await sendBrevoEmail(
-      email,
-      'Welcome to AddressPrint!',
-      `<div style="font-family: sans-serif; max-width: 480px;">
-        <p>Hi ${companyName},</p>
-        <p>Your AddressPrint account is ready! You can log in and start printing address labels right away:</p>
-        <p style="margin: 16px 0;">
-          <a href="https://ap.jbssindia.com/${slug}" style="background:#0F766E;color:#fff;padding:10px 20px;border-radius:8px;text-decoration:none;">Open AddressPrint</a>
-        </p>
-        <p>Your dashboard URL: <strong>ap.jbssindia.com/${slug}</strong></p>
-        <p>Forgot to bookmark it? No problem — just go to <strong>ap.jbssindia.com</strong> anytime and log in with your mobile number and password.</p>
-        <p>If you ever need help, reach us at support@jbssindia.com.</p>
-        <p style="color: #888; font-size: 12px; margin-top: 24px;">JBSS AddressPrint &middot; support@jbssindia.com</p>
-      </div>`
-    )
-  } catch {
-    // Ignore email failures — account creation has already succeeded.
+  // Best-effort welcome messages — signup still succeeds even if these fail.
+  const emailResult = await sendBrevoEmail(
+    email,
+    'Welcome to AddressPrint!',
+    `<div style="font-family: sans-serif; max-width: 480px;">
+      <p>Hi ${companyName},</p>
+      <p>Your AddressPrint account is ready! You can log in and start printing address labels right away:</p>
+      <p style="margin: 16px 0;">
+        <a href="https://ap.jbssindia.com/${slug}" style="background:#0F766E;color:#fff;padding:10px 20px;border-radius:8px;text-decoration:none;">Open AddressPrint</a>
+      </p>
+      <p>Your dashboard URL: <strong>ap.jbssindia.com/${slug}</strong></p>
+      <p>Forgot to bookmark it? No problem — just go to <strong>ap.jbssindia.com</strong> anytime and log in with your mobile number and password.</p>
+      <p>If you ever need help, reach us at support@jbssindia.com.</p>
+      <p style="color: #888; font-size: 12px; margin-top: 24px;">JBSS AddressPrint &middot; support@jbssindia.com</p>
+    </div>`
+  )
+  if (!emailResult.success) console.error(`Welcome email failed for new tenant ${newTenant.id}:`, emailResult.error)
+
+  if (phone) {
+    const whatsappResult = await sendWhatsAppTemplate(phone, 'ap_welcome', [companyName])
+    if (!whatsappResult.success) console.error(`Welcome WhatsApp failed for new tenant ${newTenant.id}:`, whatsappResult.error)
+
+    const trialEndDateText = new Date(trialEndsAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })
+    const trialResult = await sendWhatsAppTemplate(phone, 'ap_trial_started', [companyName, trialEndDateText])
+    if (!trialResult.success) console.error(`Trial-started WhatsApp failed for new tenant ${newTenant.id}:`, trialResult.error)
   }
 
   return { status: 'success', slug }

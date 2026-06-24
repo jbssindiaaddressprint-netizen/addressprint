@@ -53,16 +53,64 @@ export async function POST(request: NextRequest) {
       ? new Date(subscription.current_end * 1000).toISOString()
       : null
 
-    await supabaseAdmin
+    // First check whether this is a base-plan subscription (lives on tenants.razorpay_subscription_id).
+    const { data: baseTenant } = await supabaseAdmin
       .from('tenants')
-      .update({ subscription_status: 'active', current_period_end: currentPeriodEnd })
+      .select('id')
       .eq('razorpay_subscription_id', subscriptionId)
+      .maybeSingle()
+
+    if (baseTenant) {
+      await supabaseAdmin
+        .from('tenants')
+        .update({ subscription_status: 'active', current_period_end: currentPeriodEnd })
+        .eq('id', baseTenant.id)
+    } else {
+      // Not a base-plan payment — check whether it's an extra-login purchase instead.
+      const { data: extraRow } = await supabaseAdmin
+        .from('extra_login_subscriptions')
+        .select('id, tenant_id, status')
+        .eq('razorpay_subscription_id', subscriptionId)
+        .maybeSingle()
+
+      if (extraRow) {
+        const isFirstActivation = extraRow.status !== 'active'
+
+        await supabaseAdmin
+          .from('extra_login_subscriptions')
+          .update({ status: 'active', current_period_end: currentPeriodEnd })
+          .eq('id', extraRow.id)
+
+        // Only add a seat the FIRST time this subscription activates — later renewal
+        // charges for the same subscription must not keep incrementing paid_logins.
+        if (isFirstActivation) {
+          const { data: tenantRow } = await supabaseAdmin
+            .from('tenants')
+            .select('paid_logins')
+            .eq('id', extraRow.tenant_id)
+            .single()
+
+          await supabaseAdmin
+            .from('tenants')
+            .update({ paid_logins: (tenantRow?.paid_logins ?? 1) + 1 })
+            .eq('id', extraRow.tenant_id)
+        }
+      }
+    }
   }
 
   if (subscriptionId && DEACTIVATING_EVENTS.has(eventType)) {
     await supabaseAdmin
       .from('tenants')
       .update({ subscription_status: 'cancelled' })
+      .eq('razorpay_subscription_id', subscriptionId)
+
+    // If it was an extra-login subscription instead, just mark it cancelled for
+    // record-keeping. We deliberately do NOT auto-decrease paid_logins or pick which
+    // staff login to disable — that stays a manual JBSS admin decision.
+    await supabaseAdmin
+      .from('extra_login_subscriptions')
+      .update({ status: 'cancelled' })
       .eq('razorpay_subscription_id', subscriptionId)
   }
 

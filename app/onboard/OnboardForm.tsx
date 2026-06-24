@@ -125,6 +125,11 @@ export default function OnboardForm() {
 
   return (
     <form action={formAction} className="space-y-5">
+      {/* Heads up: these become the printed "From" details and aren't editable later */}
+      <div className="rounded-xl border border-[#0F766E]/40 bg-[#0F766E]/10 px-4 py-3 text-sm text-[#0F766E]">
+        These details will be printed on your shipping labels exactly as you type them, and can&apos;t be edited after signup — please double-check before continuing.
+      </div>
+
       {/* Company Name */}
       <div>
         <label htmlFor="companyName" className={labelCls}>Company Name <Required /></label>
@@ -134,7 +139,7 @@ export default function OnboardForm() {
           type="text"
           required
           disabled={locked}
-          placeholder="Hitech Induction Pvt. Ltd."
+          placeholder="Your Company Name"
           className={inputNormal}
         />
       </div>
@@ -150,7 +155,7 @@ export default function OnboardForm() {
           type="text"
           required
           disabled={locked}
-          placeholder="12 Industrial Estate, Rajkot, Gujarat"
+          placeholder="Your full business address"
           className={inputNormal}
         />
       </div>

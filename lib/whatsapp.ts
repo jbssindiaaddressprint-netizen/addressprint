@@ -13,7 +13,10 @@ export async function sendWhatsAppTemplate(
   const token = process.env.WHATSAPP_ACCESS_TOKEN
   const phoneNumberId = process.env.WHATSAPP_PHONE_NUMBER_ID
   if (!token || !phoneNumberId) {
-    return { success: false, error: 'WhatsApp credentials are not configured.' }
+    const missing = [!token && 'WHATSAPP_ACCESS_TOKEN', !phoneNumberId && 'WHATSAPP_PHONE_NUMBER_ID']
+      .filter(Boolean)
+      .join(', ')
+    return { success: false, error: `Missing env var(s): ${missing}` }
   }
 
   // The Cloud API expects digits only (country code + number, no +, spaces, or dashes).

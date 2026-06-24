@@ -119,6 +119,11 @@ export default function OnboardForm() {
             support@jbssindia.com
           </a>
         </div>
+
+        <div className="rounded-xl border border-[#334155] bg-[#1E293B]/50 px-5 py-4 text-sm text-slate-400">
+          <span className="mr-1">💡</span>
+          Don&apos;t want to remember this link? Just visit <strong className="text-slate-300">ap.jbssindia.com</strong> anytime and log in with your mobile number and password.
+        </div>
       </div>
     )
   }

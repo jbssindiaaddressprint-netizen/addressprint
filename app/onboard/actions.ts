@@ -141,6 +141,7 @@ export async function onboardTenant(
           <a href="https://ap.jbssindia.com/${slug}" style="background:#0F766E;color:#fff;padding:10px 20px;border-radius:8px;text-decoration:none;">Open AddressPrint</a>
         </p>
         <p>Your dashboard URL: <strong>ap.jbssindia.com/${slug}</strong></p>
+        <p>Forgot to bookmark it? No problem — just go to <strong>ap.jbssindia.com</strong> anytime and log in with your mobile number and password.</p>
         <p>If you ever need help, reach us at support@jbssindia.com.</p>
         <p style="color: #888; font-size: 12px; margin-top: 24px;">JBSS AddressPrint &middot; support@jbssindia.com</p>
       </div>`

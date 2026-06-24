@@ -17,11 +17,11 @@ type PlanKey = 'base_monthly' | 'base_3month' | 'base_6month' | 'base_yearly'
 // just retired in favour of these new ones).
 // Old (pre-GST, retired): base_monthly plan_T4nHHmca4SFj7Z, base_3month plan_T4nI3ge2xPuBrH,
 // base_6month plan_T4nImKxQwgqrud, base_yearly plan_T4nJMsz5cfB6VM
-const PLAN_CONFIG: Record<PlanKey, { planId: string; totalCount: number }> = {
-  base_monthly: { planId: 'plan_T5U3sa4t7avyg8', totalCount: 360 }, // every 1 month x 30yrs — ₹589 incl. GST
-  base_3month: { planId: 'plan_T5U7vVp8LTsiv6', totalCount: 120 }, // every 3 months x 30yrs — ₹1,711 incl. GST
-  base_6month: { planId: 'plan_T5UA9keqdFn9ND', totalCount: 60 }, // every 6 months x 30yrs — ₹3,351 incl. GST
-  base_yearly: { planId: 'plan_T5UAvgA0mKPS3D', totalCount: 30 }, // every 1 year x 30yrs — ₹6,490 incl. GST
+const PLAN_CONFIG: Record<PlanKey, { planId: string; totalCount: number; amountRupees: number }> = {
+  base_monthly: { planId: 'plan_T5U3sa4t7avyg8', totalCount: 360, amountRupees: 589 }, // every 1 month x 30yrs — incl. GST
+  base_3month: { planId: 'plan_T5U7vVp8LTsiv6', totalCount: 120, amountRupees: 1711 }, // every 3 months x 30yrs — incl. GST
+  base_6month: { planId: 'plan_T5UA9keqdFn9ND', totalCount: 60, amountRupees: 3351 }, // every 6 months x 30yrs — incl. GST
+  base_yearly: { planId: 'plan_T5UAvgA0mKPS3D', totalCount: 30, amountRupees: 6490 }, // every 1 year x 30yrs — incl. GST
 }
 
 export async function startSubscription(
@@ -109,6 +109,7 @@ export async function startSubscription(
     .from('tenants')
     .update({
       razorpay_subscription_id: data.id,
+      subscription_amount: config.amountRupees,
       ...(gstNumber ? { gst_number: gstNumber } : {}),
       ...(billingCompanyName ? { billing_company_name: billingCompanyName } : {}),
     })

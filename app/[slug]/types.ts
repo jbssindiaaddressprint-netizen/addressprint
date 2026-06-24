@@ -47,6 +47,8 @@ export type Tenant = {
   trial_ends_at?: string | null
   current_period_end?: string | null
   cancel_at_period_end?: boolean
+  subscription_amount?: number | null
+  renewal_reminder_sent_at?: string | null
 }
 
 export type TenantLogin = {

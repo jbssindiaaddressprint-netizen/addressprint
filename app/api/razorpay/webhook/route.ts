@@ -1,6 +1,8 @@
 import { NextResponse, type NextRequest } from 'next/server'
 import crypto from 'crypto'
 import { supabaseAdmin } from '@/lib/supabase'
+import { sendBrevoEmail } from '@/lib/brevo'
+import { sendWhatsAppTemplate } from '@/lib/whatsapp'
 
 // Events that mean "payment succeeded — this tenant should have access."
 const ACTIVATING_EVENTS = new Set(['subscription.activated', 'subscription.charged'])
@@ -35,7 +37,10 @@ export async function POST(request: NextRequest) {
 
   let event: {
     event?: string
-    payload?: { subscription?: { entity?: { id?: string; current_end?: number } } }
+    payload?: {
+      subscription?: { entity?: { id?: string; current_end?: number } }
+      payment?: { entity?: { amount?: number } }
+    }
   }
 
   try {
@@ -53,18 +58,76 @@ export async function POST(request: NextRequest) {
       ? new Date(subscription.current_end * 1000).toISOString()
       : null
 
+    // Razorpay sends the actual charged amount (in paise) on the payment entity — this is
+    // the ground truth (reflects any coupon/offer discount), more reliable than recomputing
+    // from a plan price.
+    const chargedAmountRupees = event.payload?.payment?.entity?.amount
+      ? Math.round(event.payload.payment.entity.amount / 100)
+      : null
+
     // First check whether this is a base-plan subscription (lives on tenants.razorpay_subscription_id).
     const { data: baseTenant } = await supabaseAdmin
       .from('tenants')
-      .select('id')
+      .select('id, name, email, phone, current_period_end')
       .eq('razorpay_subscription_id', subscriptionId)
       .maybeSingle()
 
     if (baseTenant) {
+      // A genuine renewal is a "subscription.charged" event for a tenant who already
+      // completed at least one billing cycle (current_period_end was already set before
+      // this webhook run). This deliberately excludes the very first charge after trial —
+      // that one is already covered by the welcome/trial-started messages, not a "renewal".
+      const isRenewal = eventType === 'subscription.charged' && !!baseTenant.current_period_end
+
       await supabaseAdmin
         .from('tenants')
-        .update({ subscription_status: 'active', current_period_end: currentPeriodEnd })
+        .update({
+          subscription_status: 'active',
+          current_period_end: currentPeriodEnd,
+          ...(chargedAmountRupees ? { subscription_amount: chargedAmountRupees } : {}),
+          // Reset the reminder flag so the advance-warning can fire again ahead of the NEXT cycle.
+          ...(isRenewal ? { renewal_reminder_sent_at: null } : {}),
+        })
         .eq('id', baseTenant.id)
+
+      if (isRenewal) {
+        const amountText = chargedAmountRupees != null ? String(chargedAmountRupees) : '—'
+        const renewedUntilText = currentPeriodEnd
+          ? new Date(currentPeriodEnd).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })
+          : '—'
+
+        // Best-effort notifications — the webhook must still succeed (return 200) even if
+        // these fail, otherwise Razorpay will keep retrying a payment event we already processed.
+        try {
+          if (baseTenant.email) {
+            await sendBrevoEmail(
+              baseTenant.email,
+              'Your AddressPrint subscription has been renewed',
+              `<div style="font-family: sans-serif; max-width: 480px;">
+                <p>Hi ${baseTenant.name ?? ''},</p>
+                <p>Your AddressPrint subscription has been renewed. &#8377;${amountText} was charged successfully, and your service is active until <strong>${renewedUntilText}</strong>.</p>
+                <p>Thank you for staying with us!</p>
+                <p>If you ever need help, reach us at support@jbssindia.com.</p>
+                <p style="color: #888; font-size: 12px; margin-top: 24px;">JBSS AddressPrint &middot; support@jbssindia.com</p>
+              </div>`
+            )
+          }
+        } catch {
+          // Ignore — see comment above.
+        }
+
+        try {
+          if (baseTenant.phone) {
+            await sendWhatsAppTemplate(baseTenant.phone, 'ap_renewal_success', [
+              baseTenant.name ?? 'there',
+              amountText,
+              renewedUntilText,
+            ])
+          }
+        } catch {
+          // Ignore.
+        }
+      }
     } else {
       // Not a base-plan payment — check whether it's an extra-login purchase instead.
       const { data: extraRow } = await supabaseAdmin

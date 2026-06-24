@@ -191,7 +191,7 @@ export default function AdminPanel({ tenants, customerCounts }: Props) {
                     <td className="px-4 py-3">
                       <p className="font-semibold text-white">{t.name}</p>
                       <a
-                        href={`https://addressprint.vercel.app/${t.slug}`}
+                        href={`https://ap.jbssindia.com/${t.slug}`}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="text-xs text-[#14B8A6] hover:underline"

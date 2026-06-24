@@ -86,7 +86,7 @@ export default function OnboardForm() {
   const labelCls = 'block text-sm font-medium text-slate-300 mb-1.5'
 
   if (state.status === 'success' && state.slug) {
-    const url = `addressprint.vercel.app/${state.slug}`
+    const url = `ap.jbssindia.com/${state.slug}`
     return (
       <div className="space-y-6">
         {/* Fields recap — locked */}

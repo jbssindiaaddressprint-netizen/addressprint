@@ -113,7 +113,8 @@ export function buildPrintHTML(
   fromOn: boolean,
   tenant: Tenant,
   care: string[],
-  inkSaver: boolean = false
+  inkSaver: boolean = false,
+  a5Half: 'top' | 'bottom' = 'top'
 ): string {
   const labelSizeKey = (Object.keys(SIZE_KEY_MAP) as LabelSize[]).find(k => SIZE_KEY_MAP[k] === size) || 'A4'
   const sp = SZ[labelSizeKey]
@@ -159,7 +160,7 @@ export function buildPrintHTML(
   
   const bottomPhones = [tenant?.phone, ...(tenant?.extra_phones ?? [])].filter(Boolean).join(' / ')
   const bottomAddress = [tenant?.address, tenant?.pin, tenant?.state].filter(Boolean).join(', ')
-  const bottomLogo = tenant?.logo_url ? `<img src="${esc(tenant.logo_url)}" alt="Logo" style="max-height: ${sp.logoMm}mm; max-width: 28mm; object-fit: contain; flex-shrink: 0; filter: ${inkSaver ? 'grayscale(100%)' : 'none'};" />` : ''
+  const bottomLogo = tenant?.logo_url ? `<img src="${esc(tenant.logo_url)}" alt="Logo" style="max-height: ${sp.logoMm}mm; max-width: 28mm; object-fit: contain; flex-shrink: 0;" />` : ''
   const showFrom = fromOn && !!(tenant?.name || tenant?.address || tenant?.phone || bottomLogo)
 
   return `<!doctype html>
@@ -261,11 +262,13 @@ export function buildPrintHTML(
     </div>` : ''}`
 
     if (isA5TwoUp) {
-      // Two identical landscape tiles stacked on one A4 sheet (148mm x2 = 296mm, fits the
-      // 297mm page height), plus a dashed guide line at the midpoint to cut along.
+      // Only the chosen half gets the label — the other half stays blank on purpose,
+      // so the same physical sheet can be fed back in later for a different address.
+      // The dashed cut-line always prints at the midpoint either way, so it's there
+      // to guide the cut once both halves are eventually filled.
+      const topOffset = a5Half === 'bottom' ? tileH : 0
       return `
-      <div class="sheet">${labelContent}</div>
-      <div class="sheet" style="top: ${tileH}mm;">${labelContent}</div>
+      <div class="sheet" style="top: ${topOffset}mm;">${labelContent}</div>
       <div style="position: absolute; top: ${tileH}mm; left: 0; width: 100%; border-top: 1px dashed #999;"></div>`
     }
 
@@ -296,6 +299,7 @@ export default function PrintSection({ tenant, customers, transporters, defaultC
   const [selPhones, setSelPhones] = useState<string[]>([])
   const [size, setSize] = useState<LabelSize>('A4')
   const [inkSaver, setInkSaver] = useState(false)
+  const [a5Half, setA5Half] = useState<'top' | 'bottom'>('top')
   const [careSym, setCareSym] = useState<CareSymbol[]>([])
   const [printErr, setPrintErr] = useState<string | null>(null)
   const [isPending, startTransition] = useTransition()
@@ -369,12 +373,17 @@ export default function PrintSection({ tenant, customers, transporters, defaultC
       showFrom,
       filteredTenant,
       careSym.map(s => CARE_KEY_MAP[s]),
-      inkSaver
+      inkSaver,
+      a5Half
     )
     
     const win = window.open('', '_blank', 'width=900,height=700')
     if (!win) { setPrintErr('Popup blocked. Please allow popups for this site.'); return }
     win.document.write(html); win.document.close()
+
+    // Next A5 print defaults to the other half — matches the natural workflow of
+    // feeding the same sheet back in for a second, different address.
+    if (size === 'A5') setA5Half(h => h === 'top' ? 'bottom' : 'top')
     
     startTransition(async () => {
       const r = await incrementPrintCount(tenant.id)
@@ -439,7 +448,7 @@ export default function PrintSection({ tenant, customers, transporters, defaultC
   const pvFromInner = showFrom ? (
     <div style={{ display: 'flex', alignItems: 'flex-start', gap: 2.5 * MM }}>
       {tenant.logo_url && (
-        <img src={tenant.logo_url} alt="" style={{ maxHeight: sp.logoMm * MM, maxWidth: 28 * MM, objectFit: 'contain', flexShrink: 0, filter: inkSaver ? 'grayscale(100%)' : 'none' }} />
+        <img src={tenant.logo_url} alt="" style={{ maxHeight: sp.logoMm * MM, maxWidth: 28 * MM, objectFit: 'contain', flexShrink: 0 }} />
       )}
       <div style={{ flex: 1, fontSize: sp.fAdPt * PT, lineHeight: 1.4, color: inkSaver ? '#555' : '#000' }}>
         <div style={{ fontSize: sp.fNmPt * PT, fontWeight: 800, marginBottom: 0.5 * MM, color: inkSaver ? '#555' : '#000' }}>{tenant.name}</div>
@@ -560,6 +569,17 @@ export default function PrintSection({ tenant, customers, transporters, defaultC
           </div>
         </div>
 
+        {size === 'A5' && (
+          <div className={sec}>
+            <p className={hd}>Print Position (2 per A4 sheet)</p>
+            <div className="flex gap-1.5">
+              <button type="button" onClick={() => setA5Half('top')} className={`flex-1 rounded-lg px-3 py-2 text-xs font-semibold transition ${a5Half === 'top' ? 'bg-[#0F766E] text-white' : 'border border-slate-200 text-slate-600 hover:border-[#0F766E] hover:text-[#0F766E]'}`}>⬆ Top Half</button>
+              <button type="button" onClick={() => setA5Half('bottom')} className={`flex-1 rounded-lg px-3 py-2 text-xs font-semibold transition ${a5Half === 'bottom' ? 'bg-[#0F766E] text-white' : 'border border-slate-200 text-slate-600 hover:border-[#0F766E] hover:text-[#0F766E]'}`}>⬇ Bottom Half</button>
+            </div>
+            <p className="mt-1.5 text-[11px] text-slate-400">Prints one address only. Feed the same A4 sheet back in and switch halves to print a different address on the rest of it — this switches automatically after each print.</p>
+          </div>
+        )}
+
         <div className={sec}>
           <p className={hd}>Ink Mode</p>
           <div className="flex gap-1.5">
@@ -628,10 +648,14 @@ export default function PrintSection({ tenant, customers, transporters, defaultC
               )
 
               if (isA5TwoUp) {
+                const filledTop = a5Half === 'top' ? 0 : tileH * MM
+                const blankTop = a5Half === 'top' ? tileH * MM : 0
                 return (
                   <div style={{ transform: `scale(${scale})`, transformOrigin: 'top left', width: canvasW * MM, height: canvasH * MM, position: 'relative' }}>
-                    <div style={{ ...tileStyle, top: 0 }}>{tileBody}</div>
-                    <div style={{ ...tileStyle, top: tileH * MM }}>{tileBody}</div>
+                    <div style={{ ...tileStyle, top: filledTop }}>{tileBody}</div>
+                    <div style={{ position: 'absolute', left: 0, top: blankTop, width: tileW * MM, height: tileH * MM, border: '1px dashed #cbd5e1', boxSizing: 'border-box', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <span style={{ fontSize: 11 * PT, color: '#94a3b8' }}>Blank — for next address</span>
+                    </div>
                     <div style={{ position: 'absolute', top: tileH * MM, left: 0, width: '100%', borderTop: '1px dashed #999' }} />
                   </div>
                 )
@@ -646,7 +670,7 @@ export default function PrintSection({ tenant, customers, transporters, defaultC
           </div>
         )}
         <p className="mt-3 text-xs text-slate-400">
-          {isA5TwoUp ? `2× ${tileW}mm × ${tileH}mm on one A4 sheet — cut in half` : `${pw}mm × ${ph}mm`} &nbsp;·&nbsp; Screen preview exactly matches print dimensions
+          {isA5TwoUp ? `${tileW}mm × ${tileH}mm — ${a5Half} half of one A4 sheet` : `${pw}mm × ${ph}mm`} &nbsp;·&nbsp; Screen preview exactly matches print dimensions
         </p>
       </div>
     </div>

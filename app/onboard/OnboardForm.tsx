@@ -1,7 +1,7 @@
 'use client'
 
 import { useActionState, useRef, useState } from 'react'
-import { onboardTenant, type OnboardState } from './actions'
+import { onboardTenant, verifySignupOtp, resendSignupOtp, type OnboardState } from './actions'
 
 const initialState: OnboardState = { status: 'idle' }
 
@@ -37,6 +37,8 @@ const MAX_FILE_SIZE = 2 * 1024 * 1024 // 2 MB
 
 export default function OnboardForm() {
   const [state, formAction, pending] = useActionState(onboardTenant, initialState)
+  const [verifyState, verifyAction, verifyPending] = useActionState(verifySignupOtp, initialState)
+  const [resendStatus, setResendStatus] = useState<'idle' | 'sending' | 'sent' | 'error'>('idle')
   const [pin, setPin] = useState('')
   const [stateVal, setStateVal] = useState('')
   const [preview, setPreview] = useState<string | null>(null)
@@ -80,16 +82,22 @@ export default function OnboardForm() {
     setPreview(URL.createObjectURL(file))
   }
 
+  async function handleResend(pendingId: string) {
+    setResendStatus('sending')
+    const result = await resendSignupOtp(pendingId)
+    setResendStatus(result.success ? 'sent' : 'error')
+  }
+
   const inputBase =
     'w-full rounded-xl border bg-[#1E293B] px-4 py-3 text-white placeholder-slate-500 outline-none transition focus:ring-2 focus:ring-[#14B8A6] disabled:cursor-not-allowed disabled:opacity-50'
   const inputNormal = `${inputBase} border-[#334155]`
   const labelCls = 'block text-sm font-medium text-slate-300 mb-1.5'
 
-  if (state.status === 'success' && state.slug) {
-    const url = `ap.jbssindia.com/${state.slug}`
+  // Step 3 — verified, account created.
+  if (verifyState.status === 'success' && verifyState.slug) {
+    const url = `ap.jbssindia.com/${verifyState.slug}`
     return (
       <div className="space-y-6">
-        {/* Fields recap — locked */}
         <div className="rounded-2xl border border-[#0F766E]/40 bg-[#0F766E]/10 px-6 py-5">
           <div className="flex items-start gap-3">
             <div className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[#0F766E]">
@@ -125,6 +133,83 @@ export default function OnboardForm() {
           Don&apos;t want to remember this link? Just visit <strong className="text-slate-300">ap.jbssindia.com</strong> anytime and log in with your mobile number and password.
         </div>
       </div>
+    )
+  }
+
+  // Step 2 — enter the codes sent to email and WhatsApp.
+  if (state.status === 'verify' && state.pendingId) {
+    return (
+      <form action={verifyAction} className="space-y-5">
+        <input type="hidden" name="pendingId" value={state.pendingId} />
+
+        <div className="rounded-xl border border-[#0F766E]/40 bg-[#0F766E]/10 px-4 py-3 text-sm text-[#0F766E]">
+          We sent two codes to make sure these details really are yours — one to{' '}
+          <strong>{state.email}</strong>, one by WhatsApp to <strong>{state.phone}</strong>. Enter both below.
+        </div>
+
+        <div>
+          <label htmlFor="emailOtp" className={labelCls}>Code from Email <Required /></label>
+          <input
+            id="emailOtp"
+            name="emailOtp"
+            type="text"
+            inputMode="numeric"
+            maxLength={6}
+            required
+            placeholder="6-digit code"
+            className={inputNormal}
+          />
+        </div>
+
+        <div>
+          <label htmlFor="phoneOtp" className={labelCls}>Code from WhatsApp <Required /></label>
+          <input
+            id="phoneOtp"
+            name="phoneOtp"
+            type="text"
+            inputMode="numeric"
+            maxLength={6}
+            required
+            placeholder="6-digit code"
+            className={inputNormal}
+          />
+        </div>
+
+        {verifyState.status === 'error' && (
+          <div className="rounded-xl border border-red-800/60 bg-red-950/40 px-4 py-3 text-sm text-red-400">
+            {verifyState.error}
+          </div>
+        )}
+
+        <button
+          type="submit"
+          disabled={verifyPending}
+          className="w-full rounded-xl bg-[#0F766E] py-3.5 text-sm font-semibold text-white transition hover:bg-[#0d6b63] focus:outline-none focus:ring-2 focus:ring-[#14B8A6] focus:ring-offset-2 focus:ring-offset-[#0F172A] disabled:cursor-not-allowed disabled:opacity-60"
+        >
+          {verifyPending ? 'Verifying…' : 'Verify & Create My Account'}
+        </button>
+
+        <div className="flex items-center justify-between text-sm">
+          <button
+            type="button"
+            onClick={() => handleResend(state.pendingId as string)}
+            disabled={resendStatus === 'sending'}
+            className="font-medium text-[#14B8A6] hover:text-white transition disabled:opacity-50"
+          >
+            {resendStatus === 'sending' ? 'Resending…' : 'Resend both codes'}
+          </button>
+          {resendStatus === 'sent' && <span className="text-xs text-[#14B8A6]">Codes resent ✓</span>}
+          {resendStatus === 'error' && <span className="text-xs text-red-400">Could not resend — try again</span>}
+        </div>
+
+        <button
+          type="button"
+          onClick={() => window.location.reload()}
+          className="block w-full text-center text-xs text-slate-500 hover:text-slate-300 transition"
+        >
+          Wrong email or phone? Start over
+        </button>
+      </form>
     )
   }
 

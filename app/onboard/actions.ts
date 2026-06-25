@@ -6,9 +6,12 @@ import { sendBrevoEmail } from '@/lib/brevo'
 import { sendWhatsAppTemplate } from '@/lib/whatsapp'
 
 export type OnboardState = {
-  status: 'idle' | 'success' | 'error'
+  status: 'idle' | 'verify' | 'success' | 'error'
   slug?: string
   error?: string
+  pendingId?: string
+  email?: string
+  phone?: string
 }
 
 function toSlug(name: string): string {
@@ -40,6 +43,14 @@ async function generateUniqueSlug(base: string): Promise<string> {
   return `${base}-${Date.now()}`
 }
 
+function generateOtp(): string {
+  return Math.floor(100000 + Math.random() * 900000).toString()
+}
+
+// ============================================================
+// Step 1 — collect signup details, verify email + phone really
+// belong to the person before any account is created.
+// ============================================================
 export async function onboardTenant(
   _prev: OnboardState,
   formData: FormData
@@ -92,22 +103,116 @@ export async function onboardTenant(
     logoUrl = urlData.publicUrl
   }
 
-  const slug = await generateUniqueSlug(toSlug(companyName))
+  const passwordHash = await bcrypt.hash(password, 10)
+  const emailOtp = generateOtp()
+  const phoneOtp = generateOtp()
+  const expiresAt = new Date(Date.now() + 10 * 60 * 1000).toISOString()
 
-  const trialEndsAt = new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString()
-
-  const { data: newTenant, error: dbError } = await supabaseAdmin
-    .from('tenants')
+  const { data: pending, error: pendingError } = await supabaseAdmin
+    .from('pending_signups')
     .insert({
-      name: companyName,
+      company_name: companyName,
       address,
       pin,
       state,
       country,
       phone,
       email,
-      slug,
+      password_hash: passwordHash,
       logo_url: logoUrl,
+      email_otp: emailOtp,
+      phone_otp: phoneOtp,
+      expires_at: expiresAt,
+    })
+    .select('id')
+    .single()
+
+  if (pendingError || !pending) return { status: 'error', error: pendingError?.message ?? 'Could not start signup. Please try again.' }
+
+  const emailResult = await sendBrevoEmail(
+    email,
+    'Your AddressPrint verification code',
+    `<div style="font-family: sans-serif; max-width: 480px;">
+      <p>Hi ${companyName},</p>
+      <p>Your email verification code for AddressPrint is:</p>
+      <p style="font-size: 28px; font-weight: bold; letter-spacing: 6px; margin: 16px 0;">${emailOtp}</p>
+      <p>Enter this along with the code sent to your WhatsApp to finish creating your account. This code expires in 10 minutes.</p>
+      <p style="color: #888; font-size: 12px; margin-top: 24px;">JBSS AddressPrint &middot; support@jbssindia.com</p>
+    </div>`
+  )
+
+  const whatsappResult = await sendWhatsAppTemplate(phone, 'ap_otp_code', [phoneOtp], { buttonCode: phoneOtp })
+
+  if (!emailResult.success || !whatsappResult.success) {
+    // Clean up the pending row — no point leaving an unverifiable signup behind.
+    await supabaseAdmin.from('pending_signups').delete().eq('id', pending.id)
+    const failedChannel = !emailResult.success ? 'email' : 'WhatsApp'
+    return {
+      status: 'error',
+      error: `Could not send the verification code to your ${failedChannel}. Please check your ${failedChannel === 'email' ? 'email address' : 'phone number'} and try again.`,
+    }
+  }
+
+  return { status: 'verify', pendingId: pending.id, email, phone }
+}
+
+// ============================================================
+// Step 2 — confirm both codes, then actually create the account.
+// ============================================================
+export async function verifySignupOtp(
+  _prev: OnboardState,
+  formData: FormData
+): Promise<OnboardState> {
+  const pendingId = (formData.get('pendingId') as string)?.trim()
+  const emailOtp = (formData.get('emailOtp') as string)?.trim()
+  const phoneOtp = (formData.get('phoneOtp') as string)?.trim()
+
+  if (!pendingId) return { status: 'error', error: 'Something went wrong. Please refresh and start signup again.' }
+  if (!emailOtp || !phoneOtp) return { status: 'error', error: 'Please enter both codes.' }
+
+  const { data: pending } = await supabaseAdmin
+    .from('pending_signups')
+    .select('*')
+    .eq('id', pendingId)
+    .single()
+
+  if (!pending) {
+    return { status: 'error', error: 'This verification session was not found. Please start signup again.' }
+  }
+
+  if (new Date(pending.expires_at).getTime() < Date.now()) {
+    return {
+      status: 'verify',
+      pendingId,
+      email: pending.email,
+      phone: pending.phone,
+      error: 'Your codes have expired. Click "Resend codes" below and try again.',
+    }
+  }
+
+  if (pending.email_otp !== emailOtp) {
+    return { status: 'verify', pendingId, email: pending.email, phone: pending.phone, error: 'Incorrect email code. Please check and try again.' }
+  }
+
+  if (pending.phone_otp !== phoneOtp) {
+    return { status: 'verify', pendingId, email: pending.email, phone: pending.phone, error: 'Incorrect WhatsApp code. Please check and try again.' }
+  }
+
+  const slug = await generateUniqueSlug(toSlug(pending.company_name))
+  const trialEndsAt = new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString()
+
+  const { data: newTenant, error: dbError } = await supabaseAdmin
+    .from('tenants')
+    .insert({
+      name: pending.company_name,
+      address: pending.address,
+      pin: pending.pin,
+      state: pending.state,
+      country: pending.country,
+      phone: pending.phone,
+      email: pending.email,
+      slug,
+      logo_url: pending.logo_url,
       subscription_status: 'trial',
       trial_ends_at: trialEndsAt,
     })
@@ -116,26 +221,23 @@ export async function onboardTenant(
 
   if (dbError || !newTenant) return { status: 'error', error: dbError?.message ?? 'Could not create account.' }
 
-  const passwordHash = await bcrypt.hash(password, 10)
-
   const { error: loginError } = await supabaseAdmin.from('tenant_logins').insert({
     tenant_id: newTenant.id,
     label: 'Owner',
-    password_hash: passwordHash,
+    password_hash: pending.password_hash,
   })
 
   if (loginError) {
-    // Roll back the tenant row so we don't leave a login-less account behind
     await supabaseAdmin.from('tenants').delete().eq('id', newTenant.id)
     return { status: 'error', error: 'Could not set up your login. Please try again.' }
   }
 
-  // Best-effort welcome messages — signup still succeeds even if these fail.
+  // Best-effort welcome + internal notify — signup still succeeds even if these fail.
   const emailResult = await sendBrevoEmail(
-    email,
+    pending.email,
     'Welcome to AddressPrint!',
     `<div style="font-family: sans-serif; max-width: 480px;">
-      <p>Hi ${companyName},</p>
+      <p>Hi ${pending.company_name},</p>
       <p>Your AddressPrint account is ready! You can log in and start printing address labels right away:</p>
       <p style="margin: 16px 0;">
         <a href="https://ap.jbssindia.com/${slug}" style="background:#0F766E;color:#fff;padding:10px 20px;border-radius:8px;text-decoration:none;">Open AddressPrint</a>
@@ -148,32 +250,73 @@ export async function onboardTenant(
   )
   if (!emailResult.success) console.error(`Welcome email failed for new tenant ${newTenant.id}:`, emailResult.error)
 
-  // Notify JBSS internally — admin doesn't otherwise know a trial signup happened
-  // until they check /admin manually. Best-effort, never blocks signup.
   const trialEndDateText = new Date(trialEndsAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })
   const adminNotifyResult = await sendBrevoEmail(
     'info@jbssindia.com',
-    `New AddressPrint trial signup: ${companyName}`,
+    `New AddressPrint trial signup: ${pending.company_name}`,
     `<div style="font-family: sans-serif; max-width: 480px;">
-      <p>A new AddressPrint trial account just signed up.</p>
+      <p>A new AddressPrint trial account just signed up (email + phone verified).</p>
       <table style="font-size: 14px; border-collapse: collapse;">
-        <tr><td style="padding:4px 12px 4px 0;color:#666;">Company</td><td>${companyName}</td></tr>
+        <tr><td style="padding:4px 12px 4px 0;color:#666;">Company</td><td>${pending.company_name}</td></tr>
         <tr><td style="padding:4px 12px 4px 0;color:#666;">Slug</td><td>ap.jbssindia.com/${slug}</td></tr>
-        <tr><td style="padding:4px 12px 4px 0;color:#666;">Email</td><td>${email}</td></tr>
-        <tr><td style="padding:4px 12px 4px 0;color:#666;">Phone</td><td>${phone}</td></tr>
+        <tr><td style="padding:4px 12px 4px 0;color:#666;">Email</td><td>${pending.email}</td></tr>
+        <tr><td style="padding:4px 12px 4px 0;color:#666;">Phone</td><td>${pending.phone}</td></tr>
         <tr><td style="padding:4px 12px 4px 0;color:#666;">Trial ends</td><td>${trialEndDateText}</td></tr>
       </table>
     </div>`
   )
   if (!adminNotifyResult.success) console.error(`Admin signup-notify email failed for new tenant ${newTenant.id}:`, adminNotifyResult.error)
 
-  if (phone) {
-    const whatsappResult = await sendWhatsAppTemplate(phone, 'ap_welcome', [companyName])
-    if (!whatsappResult.success) console.error(`Welcome WhatsApp failed for new tenant ${newTenant.id}:`, whatsappResult.error)
+  const whatsappResult = await sendWhatsAppTemplate(pending.phone, 'ap_welcome', [pending.company_name])
+  if (!whatsappResult.success) console.error(`Welcome WhatsApp failed for new tenant ${newTenant.id}:`, whatsappResult.error)
 
-    const trialResult = await sendWhatsAppTemplate(phone, 'ap_trial_started', [companyName, trialEndDateText])
-    if (!trialResult.success) console.error(`Trial-started WhatsApp failed for new tenant ${newTenant.id}:`, trialResult.error)
-  }
+  const trialResult = await sendWhatsAppTemplate(pending.phone, 'ap_trial_started', [pending.company_name, trialEndDateText])
+  if (!trialResult.success) console.error(`Trial-started WhatsApp failed for new tenant ${newTenant.id}:`, trialResult.error)
+
+  // Clean up — best-effort, signup has already succeeded at this point.
+  await supabaseAdmin.from('pending_signups').delete().eq('id', pending.id)
 
   return { status: 'success', slug }
+}
+
+// ============================================================
+// Resend both codes — same pending row, fresh codes + expiry.
+// ============================================================
+export async function resendSignupOtp(pendingId: string): Promise<{ success: boolean; error?: string }> {
+  const { data: pending } = await supabaseAdmin
+    .from('pending_signups')
+    .select('id, company_name, email, phone')
+    .eq('id', pendingId)
+    .single()
+
+  if (!pending) return { success: false, error: 'This verification session was not found. Please start signup again.' }
+
+  const emailOtp = generateOtp()
+  const phoneOtp = generateOtp()
+  const expiresAt = new Date(Date.now() + 10 * 60 * 1000).toISOString()
+
+  await supabaseAdmin
+    .from('pending_signups')
+    .update({ email_otp: emailOtp, phone_otp: phoneOtp, expires_at: expiresAt })
+    .eq('id', pending.id)
+
+  const emailResult = await sendBrevoEmail(
+    pending.email,
+    'Your AddressPrint verification code',
+    `<div style="font-family: sans-serif; max-width: 480px;">
+      <p>Hi ${pending.company_name},</p>
+      <p>Your new email verification code for AddressPrint is:</p>
+      <p style="font-size: 28px; font-weight: bold; letter-spacing: 6px; margin: 16px 0;">${emailOtp}</p>
+      <p>Enter this along with the code sent to your WhatsApp to finish creating your account. This code expires in 10 minutes.</p>
+      <p style="color: #888; font-size: 12px; margin-top: 24px;">JBSS AddressPrint &middot; support@jbssindia.com</p>
+    </div>`
+  )
+  const whatsappResult = await sendWhatsAppTemplate(pending.phone, 'ap_otp_code', [phoneOtp], { buttonCode: phoneOtp })
+
+  if (!emailResult.success || !whatsappResult.success) {
+    const failedChannel = !emailResult.success ? 'email' : 'WhatsApp'
+    return { success: false, error: `Could not resend the code to your ${failedChannel}. Please try again.` }
+  }
+
+  return { success: true }
 }

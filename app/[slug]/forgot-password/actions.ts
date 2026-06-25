@@ -4,6 +4,7 @@ import bcrypt from 'bcryptjs'
 import { supabaseAdmin } from '@/lib/supabase'
 import { sendBrevoEmail } from '@/lib/brevo'
 import { sendWhatsAppTemplate } from '@/lib/whatsapp'
+import { logActivity } from '@/lib/activityLog'
 
 export type RequestOtpState = {
   status: 'idle' | 'sent' | 'error'
@@ -51,6 +52,8 @@ export async function requestPasswordReset(
     .eq('id', tenant.id)
 
   if (updateError) return { status: 'error', error: 'Could not generate a reset code. Please try again.' }
+
+  await logActivity(tenant.id, 'forgot_password_requested', email)
 
   const emailResult = await sendBrevoEmail(
     tenant.email,
@@ -118,6 +121,8 @@ export async function resetPasswordWithOtp(
     .eq('label', 'Owner')
 
   if (pwError) return { status: 'error', error: 'Could not reset your password. Please try again.' }
+
+  await logActivity(tenant.id, 'password_reset_completed')
 
   // Clear the OTP so it can't be reused.
   await supabaseAdmin

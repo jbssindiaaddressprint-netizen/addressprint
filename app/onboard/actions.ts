@@ -148,11 +148,29 @@ export async function onboardTenant(
   )
   if (!emailResult.success) console.error(`Welcome email failed for new tenant ${newTenant.id}:`, emailResult.error)
 
+  // Notify JBSS internally — admin doesn't otherwise know a trial signup happened
+  // until they check /admin manually. Best-effort, never blocks signup.
+  const trialEndDateText = new Date(trialEndsAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })
+  const adminNotifyResult = await sendBrevoEmail(
+    'info@jbssindia.com',
+    `New AddressPrint trial signup: ${companyName}`,
+    `<div style="font-family: sans-serif; max-width: 480px;">
+      <p>A new AddressPrint trial account just signed up.</p>
+      <table style="font-size: 14px; border-collapse: collapse;">
+        <tr><td style="padding:4px 12px 4px 0;color:#666;">Company</td><td>${companyName}</td></tr>
+        <tr><td style="padding:4px 12px 4px 0;color:#666;">Slug</td><td>ap.jbssindia.com/${slug}</td></tr>
+        <tr><td style="padding:4px 12px 4px 0;color:#666;">Email</td><td>${email}</td></tr>
+        <tr><td style="padding:4px 12px 4px 0;color:#666;">Phone</td><td>${phone}</td></tr>
+        <tr><td style="padding:4px 12px 4px 0;color:#666;">Trial ends</td><td>${trialEndDateText}</td></tr>
+      </table>
+    </div>`
+  )
+  if (!adminNotifyResult.success) console.error(`Admin signup-notify email failed for new tenant ${newTenant.id}:`, adminNotifyResult.error)
+
   if (phone) {
     const whatsappResult = await sendWhatsAppTemplate(phone, 'ap_welcome', [companyName])
     if (!whatsappResult.success) console.error(`Welcome WhatsApp failed for new tenant ${newTenant.id}:`, whatsappResult.error)
 
-    const trialEndDateText = new Date(trialEndsAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })
     const trialResult = await sendWhatsAppTemplate(phone, 'ap_trial_started', [companyName, trialEndDateText])
     if (!trialResult.success) console.error(`Trial-started WhatsApp failed for new tenant ${newTenant.id}:`, trialResult.error)
   }

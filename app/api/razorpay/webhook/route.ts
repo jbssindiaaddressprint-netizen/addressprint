@@ -154,6 +154,21 @@ export async function POST(request: NextRequest) {
         )
         if (!adminNotifyResult.success) console.error(`First-conversion admin-notify email failed for ${baseTenant.id}:`, adminNotifyResult.error)
       }
+
+      // Log every real charge (first conversion AND renewals) into the permanent
+      // billing ledger — this is what the weekly digest reads from, and it also
+      // doubles as a standing payment history for Zoho reconciliation.
+      if (chargedAmountRupees != null) {
+        const { error: logError } = await supabaseAdmin.from('billing_events').insert({
+          tenant_id: baseTenant.id,
+          event_type: isRenewal ? 'base_renewal' : 'base_first',
+          amount: chargedAmountRupees,
+          plan_key: baseTenant.plan_key,
+          gst_number: baseTenant.gst_number,
+          billing_company_name: baseTenant.billing_company_name,
+        })
+        if (logError) console.error(`billing_events insert failed for ${baseTenant.id}:`, logError)
+      }
     } else {
       // Not a base-plan payment — check whether it's an extra-login purchase instead.
       const { data: extraRow } = await supabaseAdmin
@@ -183,6 +198,26 @@ export async function POST(request: NextRequest) {
             .from('tenants')
             .update({ paid_logins: (tenantRow?.paid_logins ?? 1) + 1 })
             .eq('id', extraRow.tenant_id)
+        }
+
+        // Same permanent billing ledger as the base-plan branch above — GST number and
+        // billing company live on the tenant row, not on the add-on subscription itself.
+        if (chargedAmountRupees != null) {
+          const { data: gstInfo } = await supabaseAdmin
+            .from('tenants')
+            .select('name, gst_number, billing_company_name')
+            .eq('id', extraRow.tenant_id)
+            .single()
+
+          const { error: logError } = await supabaseAdmin.from('billing_events').insert({
+            tenant_id: extraRow.tenant_id,
+            event_type: isFirstActivation ? 'extra_login_first' : 'extra_login_renewal',
+            amount: chargedAmountRupees,
+            plan_key: null,
+            gst_number: gstInfo?.gst_number ?? null,
+            billing_company_name: gstInfo?.billing_company_name ?? null,
+          })
+          if (logError) console.error(`billing_events insert failed for extra-login ${extraRow.tenant_id}:`, logError)
         }
       }
     }

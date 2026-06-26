@@ -3,6 +3,7 @@ import crypto from 'crypto'
 import { supabaseAdmin } from '@/lib/supabase'
 import { sendBrevoEmail } from '@/lib/brevo'
 import { sendWhatsAppTemplate } from '@/lib/whatsapp'
+import { planLabel } from '@/lib/planLabels'
 
 // Events that mean "payment succeeded — this tenant should have access."
 const ACTIVATING_EVENTS = new Set(['subscription.activated', 'subscription.charged'])
@@ -68,7 +69,7 @@ export async function POST(request: NextRequest) {
     // First check whether this is a base-plan subscription (lives on tenants.razorpay_subscription_id).
     const { data: baseTenant } = await supabaseAdmin
       .from('tenants')
-      .select('id, name, email, phone, current_period_end')
+      .select('id, name, email, phone, current_period_end, subscription_status, gst_number, billing_company_name, plan_key')
       .eq('razorpay_subscription_id', subscriptionId)
       .maybeSingle()
 
@@ -78,6 +79,17 @@ export async function POST(request: NextRequest) {
       // this webhook run). This deliberately excludes the very first charge after trial —
       // that one is already covered by the welcome/trial-started messages, not a "renewal".
       const isRenewal = eventType === 'subscription.charged' && !!baseTenant.current_period_end
+
+      // First-ever conversion = was on "trial" before this event. Checked on the
+      // pre-update status, so a duplicate webhook for the same event (Razorpay retries,
+      // or "activated" + "charged" both landing for the same payment) won't double-fire
+      // this once the first one has already flipped status to "active".
+      const isFirstConversion = !isRenewal && baseTenant.subscription_status === 'trial'
+
+      const amountText = chargedAmountRupees != null ? String(chargedAmountRupees) : '—'
+      const renewedUntilText = currentPeriodEnd
+        ? new Date(currentPeriodEnd).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })
+        : '—'
 
       await supabaseAdmin
         .from('tenants')
@@ -91,11 +103,6 @@ export async function POST(request: NextRequest) {
         .eq('id', baseTenant.id)
 
       if (isRenewal) {
-        const amountText = chargedAmountRupees != null ? String(chargedAmountRupees) : '—'
-        const renewedUntilText = currentPeriodEnd
-          ? new Date(currentPeriodEnd).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })
-          : '—'
-
         // Best-effort notifications — the webhook must still succeed (return 200) even if
         // these fail, otherwise Razorpay will keep retrying a payment event we already processed.
         // These helpers return {success:false, error} rather than throwing, so we check the
@@ -123,6 +130,29 @@ export async function POST(request: NextRequest) {
           ])
           if (!whatsappResult.success) console.error(`Renewal-success WhatsApp failed for ${baseTenant.id}:`, whatsappResult.error)
         }
+      } else if (isFirstConversion) {
+        // First time this tenant has actually paid — notify JBSS directly so there's no
+        // need to check Supabase, and so the GST number / billing company are on hand
+        // right away for the Zoho invoice cross-check. Renewals deliberately do NOT
+        // send this — those get covered by a weekly digest instead, to avoid one email
+        // per tenant per billing cycle once there are many tenants.
+        const adminNotifyResult = await sendBrevoEmail(
+          'info@jbssindia.com',
+          `AddressPrint: ${baseTenant.name} just subscribed`,
+          `<div style="font-family: sans-serif; max-width: 480px;">
+            <p><strong>${baseTenant.name}</strong> just converted from trial to a paid AddressPrint subscription.</p>
+            <table style="font-size: 14px; border-collapse: collapse;">
+              <tr><td style="padding:4px 12px 4px 0;color:#666;">Plan</td><td>${planLabel(baseTenant.plan_key)}</td></tr>
+              <tr><td style="padding:4px 12px 4px 0;color:#666;">Amount charged</td><td>&#8377;${amountText}</td></tr>
+              <tr><td style="padding:4px 12px 4px 0;color:#666;">GST number</td><td>${baseTenant.gst_number ?? 'Not provided'}</td></tr>
+              <tr><td style="padding:4px 12px 4px 0;color:#666;">Billing company</td><td>${baseTenant.billing_company_name ?? 'Not provided'}</td></tr>
+              <tr><td style="padding:4px 12px 4px 0;color:#666;">Active until</td><td>${renewedUntilText}</td></tr>
+              <tr><td style="padding:4px 12px 4px 0;color:#666;">Tenant email</td><td>${baseTenant.email ?? '—'}</td></tr>
+              <tr><td style="padding:4px 12px 4px 0;color:#666;">Tenant phone</td><td>${baseTenant.phone ?? '—'}</td></tr>
+            </table>
+          </div>`
+        )
+        if (!adminNotifyResult.success) console.error(`First-conversion admin-notify email failed for ${baseTenant.id}:`, adminNotifyResult.error)
       }
     } else {
       // Not a base-plan payment — check whether it's an extra-login purchase instead.

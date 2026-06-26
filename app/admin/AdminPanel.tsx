@@ -9,34 +9,90 @@ function formatDate(dateStr: string): string {
   return new Date(dateStr).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })
 }
 
+// Friendly labels for the plan_key values saved by the Subscribe page.
+const PLAN_LABELS: Record<string, string> = {
+  base_monthly: 'Monthly',
+  base_3month: '3-Month',
+  base_6month: '6-Month',
+  base_yearly: 'Yearly',
+}
+
 // Mirrors the tenant-facing SubscriptionBanner so JBSS sees the same status the tenant sees.
+// Also surfaces GST number / billing company name here (saved at Subscribe time) and the
+// plan name, so JBSS doesn't need to open Supabase to check any of this.
 function BillingStatus({ tenant }: { tenant: AdminTenant }) {
-  const { subscription_status, trial_ends_at, current_period_end, subscription_amount } = tenant
+  const {
+    subscription_status,
+    trial_ends_at,
+    current_period_end,
+    subscription_amount,
+    plan_key,
+    gst_number,
+    billing_company_name,
+  } = tenant
+
+  const planLabel = plan_key ? PLAN_LABELS[plan_key] ?? plan_key : null
+
+  // GST/billing-company line — only renders if the tenant actually filled these in.
+  // Shown regardless of subscription status, since these are useful for Zoho even
+  // after a tenant has lapsed or cancelled.
+  const billingDetails =
+    gst_number || billing_company_name ? (
+      <p className="mt-0.5 text-xs text-slate-500">
+        {billing_company_name ? <span>{billing_company_name}</span> : null}
+        {billing_company_name && gst_number ? ' · ' : ''}
+        {gst_number ? <span className="font-mono">{gst_number}</span> : null}
+      </p>
+    ) : null
 
   // Pre-existing tenants never moved onto the billing system have no dates at all —
   // label them clearly as legacy/free rather than implying they're on a real trial.
   if (!trial_ends_at && !current_period_end) {
-    return <p className="mt-1 text-xs text-slate-500">Legacy (no billing)</p>
+    return (
+      <>
+        <p className="mt-1 text-xs text-slate-500">Legacy (no billing)</p>
+        {billingDetails}
+      </>
+    )
   }
 
   if (subscription_status === 'cancelled') {
-    return <p className="mt-1 text-xs text-red-400">Cancelled</p>
+    return (
+      <>
+        <p className="mt-1 text-xs text-red-400">Cancelled{planLabel ? ` · ${planLabel}` : ''}</p>
+        {billingDetails}
+      </>
+    )
   }
 
   if (subscription_status === 'trial' && trial_ends_at) {
-    return <p className="mt-1 text-xs text-amber-400">Trial · ends {formatDate(trial_ends_at)}</p>
+    return (
+      <>
+        <p className="mt-1 text-xs text-amber-400">Trial · ends {formatDate(trial_ends_at)}</p>
+        {billingDetails}
+      </>
+    )
   }
 
   if (subscription_status === 'active' && current_period_end) {
     return (
-      <p className="mt-1 text-xs text-emerald-400">
-        Renews {formatDate(current_period_end)}
-        {subscription_amount != null ? ` · ₹${subscription_amount}` : ''}
-      </p>
+      <>
+        <p className="mt-1 text-xs text-emerald-400">
+          Renews {formatDate(current_period_end)}
+          {subscription_amount != null ? ` · ₹${subscription_amount}` : ''}
+          {planLabel ? ` · ${planLabel}` : ''}
+        </p>
+        {billingDetails}
+      </>
     )
   }
 
-  return <p className="mt-1 text-xs text-slate-500">—</p>
+  return (
+    <>
+      <p className="mt-1 text-xs text-slate-500">—</p>
+      {billingDetails}
+    </>
+  )
 }
 
 interface Props {
@@ -265,7 +321,17 @@ export default function AdminPanel({ tenants, customerCounts }: Props) {
                           className={inputCls}
                         />
                       ) : (
-                        <span>{t.paid_logins}</span>
+                        <>
+                          <span>{t.paid_logins}</span>
+                          {t.paid_logins - 1 > t.active_extra_logins ? (
+                            <p
+                              className="mt-0.5 text-xs text-amber-400"
+                              title="One or more extra-login add-ons are no longer active, but the seat count was never manually reduced."
+                            >
+                              ⚠ {t.active_extra_logins} add-on{t.active_extra_logins === 1 ? '' : 's'} active
+                            </p>
+                          ) : null}
+                        </>
                       )}
                     </td>
                     <td className="px-4 py-3 text-slate-400">

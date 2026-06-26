@@ -4,17 +4,10 @@ import { useMemo, useState, useTransition } from 'react'
 import { setTenantActive, updateTenantCaps, updateTenantEmail } from './actions'
 import { logoutAdmin } from './login/actions'
 import type { AdminTenant } from './types'
+import { planLabel } from '@/lib/planLabels'
 
 function formatDate(dateStr: string): string {
   return new Date(dateStr).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })
-}
-
-// Friendly labels for the plan_key values saved by the Subscribe page.
-const PLAN_LABELS: Record<string, string> = {
-  base_monthly: 'Monthly',
-  base_3month: '3-Month',
-  base_6month: '6-Month',
-  base_yearly: 'Yearly',
 }
 
 // Mirrors the tenant-facing SubscriptionBanner so JBSS sees the same status the tenant sees.
@@ -31,7 +24,7 @@ function BillingStatus({ tenant }: { tenant: AdminTenant }) {
     billing_company_name,
   } = tenant
 
-  const planLabel = plan_key ? PLAN_LABELS[plan_key] ?? plan_key : null
+  const planLabelText = plan_key ? planLabel(plan_key) : null
 
   // GST/billing-company line — only renders if the tenant actually filled these in.
   // Shown regardless of subscription status, since these are useful for Zoho even
@@ -59,7 +52,7 @@ function BillingStatus({ tenant }: { tenant: AdminTenant }) {
   if (subscription_status === 'cancelled') {
     return (
       <>
-        <p className="mt-1 text-xs text-red-400">Cancelled{planLabel ? ` · ${planLabel}` : ''}</p>
+        <p className="mt-1 text-xs text-red-400">Cancelled{planLabelText ? ` · ${planLabelText}` : ''}</p>
         {billingDetails}
       </>
     )
@@ -80,7 +73,7 @@ function BillingStatus({ tenant }: { tenant: AdminTenant }) {
         <p className="mt-1 text-xs text-emerald-400">
           Renews {formatDate(current_period_end)}
           {subscription_amount != null ? ` · ₹${subscription_amount}` : ''}
-          {planLabel ? ` · ${planLabel}` : ''}
+          {planLabelText ? ` · ${planLabelText}` : ''}
         </p>
         {billingDetails}
       </>

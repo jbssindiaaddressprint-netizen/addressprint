@@ -110,6 +110,7 @@ export async function startSubscription(
     .update({
       razorpay_subscription_id: data.id,
       subscription_amount: config.amountRupees,
+      plan_key: planKey,
       ...(gstNumber ? { gst_number: gstNumber } : {}),
       ...(billingCompanyName ? { billing_company_name: billingCompanyName } : {}),
     })
